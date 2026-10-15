@@ -12,6 +12,8 @@
 #     <!-- BEGIN synced-rules: <owner/repo>/<path>@<revision> -->
 #     <!-- END synced-rules: <owner/repo>/<path> -->
 #     which must already exist once each in <target>.
+#   vendor <owner/repo> <path> <revision> <target>
+#     copies the directory <path> into <target>, a path inside the app.
 
 set -euo pipefail
 
@@ -90,8 +92,8 @@ pinned_checkout() {
     printf '%s\n' "${checkout}"
 }
 
-stage_skill() {
-    local name="$1" repository="$2" path="$3" revision="$4" excludes="$5"
+stage_tree() {
+    local stage="$1" repository="$2" path="$3" revision="$4" excludes="$5"
     local checkout
     checkout="$(pinned_checkout "${repository}" "${revision}")"
 
@@ -101,14 +103,24 @@ stage_skill() {
         exit 1
     fi
 
-    mkdir "${STAGE_ROOT}/${name}"
+    mkdir "${stage}"
     git --git-dir="${git_dir}" archive --format=tar "${revision}:${path}" |
-        tar -x -f - -C "${STAGE_ROOT}/${name}"
+        tar -x -f - -C "${stage}"
     if [[ "${excludes}" != "-" ]]; then
         local exclude
         for exclude in ${excludes//,/ }; do
-            rm -rf "${STAGE_ROOT:?}/${name}/${exclude}"
+            rm -rf "${stage:?}/${exclude}"
         done
+    fi
+}
+
+# Sync replaces whatever the target names, so accept only a relative path of
+# plain segments, never the app root or a path outside it.
+require_app_path() {
+    local pattern='^[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.][A-Za-z0-9_.-]*)*$'
+    if [[ ! "$2" =~ ${pattern} || "/$2/" == */./* || "/$2/" == */../* ]]; then
+        echo "skills.lock: $1 needs a target path inside the app." >&2
+        exit 1
     fi
 }
 
@@ -152,10 +164,7 @@ process_rule() {
     local label="${repository}/${path}"
 
     require_revision "rule ${label}" "${revision}"
-    if [[ "${target}" == "-" || "${target}" == /* || "${target}" == *..* ]]; then
-        echo "skills.lock: rule ${label} needs a target path inside the app." >&2
-        exit 1
-    fi
+    require_app_path "rule ${label}" "${target}"
 
     local checkout
     checkout="$(pinned_checkout "${repository}" "${revision}")"
@@ -189,24 +198,41 @@ process_rule() {
     fi
 }
 
-process_skill() {
-    local name="$1" repository="$2" path="$3" revision="$4" excludes="$5"
-
-    require_revision "${name}" "${revision}"
-    stage_skill "${name}" "${repository}" "${path}" "${revision}" "${excludes}"
-    local target="${SKILLS_DIR}/${name}"
+place_tree() {
+    local label="$1" stage="$2" target="$3" source="$4"
 
     if [[ "${MODE}" == "sync" ]]; then
         rm -rf "${target}"
-        cp -R "${STAGE_ROOT}/${name}" "${target}"
-        echo "synced ${name} from ${repository}@${revision:0:12}"
-    elif diff -r -x .DS_Store "${STAGE_ROOT}/${name}" "${target}" >/dev/null 2>&1; then
-        echo "ok ${name} (${repository}@${revision:0:12})"
+        mkdir -p "$(dirname "${target}")"
+        cp -R "${stage}" "${target}"
+        echo "synced ${label} from ${source}"
+    elif diff -r -x .DS_Store "${stage}" "${target}" >/dev/null 2>&1; then
+        echo "ok ${label} (${source})"
     else
-        echo "drift ${name}: differs from ${repository}@${revision:0:12}" >&2
-        diff -r -x .DS_Store "${STAGE_ROOT}/${name}" "${target}" >&2 || true
+        echo "drift ${label}: differs from ${source}" >&2
+        diff -r -x .DS_Store "${stage}" "${target}" >&2 || true
         DRIFT=1
     fi
+}
+
+process_skill() {
+    local name="$1" repository="$2" path="$3" revision="$4" excludes="$5"
+    local stage="${STAGE_ROOT}/${name}"
+
+    require_revision "${name}" "${revision}"
+    stage_tree "${stage}" "${repository}" "${path}" "${revision}" "${excludes}"
+    place_tree "${name}" "${stage}" "${SKILLS_DIR}/${name}" "${repository}@${revision:0:12}"
+}
+
+process_vendor() {
+    local repository="$1" path="$2" revision="$3" target="$4"
+    local label="${repository}/${path}"
+    local stage="${STAGE_ROOT}/vendor-$(printf '%s' "${target}" | tr '/' '_')"
+
+    require_revision "vendor ${label}" "${revision}"
+    require_app_path "vendor ${label}" "${target}"
+    stage_tree "${stage}" "${repository}" "${path}" "${revision}" -
+    place_tree "${target}" "${stage}" "${APP_ROOT}/${target}" "${label}@${revision:0:12}"
 }
 
 case "${MODE}" in
@@ -223,11 +249,11 @@ DRIFT=0
 
 while read -r name repository path revision excludes; do
     [[ -z "${name}" || "${name}" == \#* ]] && continue
-    if [[ "${name}" == "rule" ]]; then
-        process_rule "${repository}" "${path}" "${revision}" "${excludes:--}"
-    else
-        process_skill "${name}" "${repository}" "${path}" "${revision}" "${excludes:--}"
-    fi
+    case "${name}" in
+        rule) process_rule "${repository}" "${path}" "${revision}" "${excludes:--}" ;;
+        vendor) process_vendor "${repository}" "${path}" "${revision}" "${excludes:--}" ;;
+        *) process_skill "${name}" "${repository}" "${path}" "${revision}" "${excludes:--}" ;;
+    esac
 done <"${LOCK_FILE}"
 
 if [[ "${DRIFT}" -ne 0 ]]; then

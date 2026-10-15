@@ -16,6 +16,14 @@ The app's own guidance wins where it is more specific. Before changing anything,
 - its verification guide for gates and evidence, and any data-model doc that must change with a DocType, `Link` or `Table` change;
 - any app migration skill or notes listing app-specific references to update.
 
+## Invariants
+
+- A data transformation gets an idempotent patch registered in `patches.txt`, tested by running the registered sequence against representative legacy data, including a safe rerun. Schema changes that normal migrate handles get no patch.
+- Frappe marks registered patches complete before `after_install` runs, so any DocPerm, index or other invariant a fresh install needs is also bootstrapped idempotently from `after_install` and `after_migrate`. Verify both paths.
+- Concurrency-sensitive uniqueness gets a controller check for a useful error and a database unique index as the guarantee, installed idempotently. Index frequently filtered or joined columns as code, not ad hoc.
+- Permission patches touch only the `DocPerm` rows they own; never save a parent `DocType` just to change permissions.
+- A direct SQL write in a migration documents why it is safe and handles affected caches and derived data.
+
 ## Pick the branch
 
 Read only the reference the branch names.

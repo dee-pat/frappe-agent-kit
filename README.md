@@ -9,7 +9,7 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there.
 
 | Path                        | What it is                                                                                           |
 | --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `rules/frappe.md`           | Always-on Frappe rules: framework, migrations and invariants, change control, tests, verification     |
+| `rules/frappe.md`           | Always-on Frappe rules: the few that agents get wrong by default, kept short to load every turn       |
 | `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes     |
 | `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                     |
 | `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head                 |

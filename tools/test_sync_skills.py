@@ -64,6 +64,7 @@ class SyncSkillsTests(unittest.TestCase):
         (app / "skills.lock").write_text(
             f"demo  acme/kit  skills/demo      {self.revision}  evals\n"
             f"rule  acme/kit  rules/shared.md  {self.revision}  AGENTS.md\n"
+            f"vendor  acme/kit  rules  {self.revision}  vendored/rules\n"
         )
         (app / "AGENTS.md").write_text(f"# Demo\n\n{RULES_BEGIN}unsynced -->\n{RULES_END}\n\nApp rule.\n")
         return app
@@ -104,6 +105,9 @@ class SyncSkillsTests(unittest.TestCase):
     def vendored_skill(self):
         return self.app / ".agents" / "skills" / "demo"
 
+    def vendored_rules(self):
+        return self.app / "vendored" / "rules"
+
     def test_sync_vendors_pinned_files_and_check_passes(self):
         result = self.run_sync("sync")
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -112,6 +116,8 @@ class SyncSkillsTests(unittest.TestCase):
         agents = (self.app / "AGENTS.md").read_text()
         self.assertIn(f"{RULES_BEGIN}{self.revision} -->\npinned rule\n{RULES_END}", agents)
         self.assertTrue(agents.endswith("App rule.\n"))
+        self.assertEqual(sorted(p.name for p in self.vendored_rules().iterdir()), ["shared.md"])
+        self.assertEqual((self.vendored_rules() / "shared.md").read_text(), "pinned rule\n")
 
         result = self.run_sync("check")
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -121,11 +127,22 @@ class SyncSkillsTests(unittest.TestCase):
         (self.vendored_skill() / "SKILL.md").write_text("edited\n")
         agents = self.app / "AGENTS.md"
         agents.write_text(agents.read_text().replace("pinned rule", "edited rule"))
+        (self.vendored_rules() / "extra.md").write_text("added\n")
 
         result = self.run_sync("check")
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("drift demo", result.stdout)
         self.assertIn("drift rules acme/kit/rules/shared.md", result.stdout)
+        self.assertIn("drift vendored/rules", result.stdout)
+
+    def test_vendor_target_must_stay_inside_the_app(self):
+        for target in ("-", ".", "..", "./vendored", "vendored/../..", "/tmp/vendored"):
+            with self.subTest(target):
+                (self.app / "skills.lock").write_text(f"vendor  acme/kit  rules  {self.revision}  {target}\n")
+                result = self.run_sync("sync")
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("vendor acme/kit/rules needs a target path inside the app", result.stdout)
+                self.assertTrue((self.app / "AGENTS.md").is_file())
 
     def test_dirty_cached_worktree_never_reaches_vendored_copies(self):
         self.assertEqual(self.run_sync("sync").returncode, 0)

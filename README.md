@@ -7,13 +7,14 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there.
 
 ## Contents
 
-| Path                        | What it is                                                                                           |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `rules/frappe.md`           | Always-on Frappe rules: the few that agents get wrong by default, kept short to load every turn       |
-| `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes     |
-| `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                     |
-| `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head                 |
-| `tools/sync-skills.sh`      | Vendor pinned skills and the rules block into an app, and check that the copies have not drifted     |
+| Path                        | What it is                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `rules/frappe.md`           | Always-on Frappe rules: the few that agents get wrong by default, kept short to load every turn   |
+| `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes |
+| `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                 |
+| `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head              |
+| `tools/sync-skills.sh`      | Vendor pinned skills, directories and the rules block into an app; check the copies match         |
+| `tools/test_sync_skills.py` | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
 
 Nothing here is app-specific. App rules, domain conventions, site names and
 commands stay in each app's own `AGENTS.md`, and they win on conflict.
@@ -23,8 +24,9 @@ commands stay in each app's own `AGENTS.md`, and they win on conflict.
 Vendor plain files at a pinned revision. Symlinks and submodules break in CI,
 fresh clones and hosted code review.
 
-1. Copy `tools/sync-skills.sh` (and, to run its regression tests, `tools/test_sync_skills.py`) to the app's `scripts/`. It expects the app at
-   `<bench>/apps/<app>` and caches checkouts in `<bench>/.cache/agent-skills/`.
+1. Copy `tools/sync-skills.sh` to the app's `scripts/`; its tests stay here. It
+   expects the app at `<bench>/apps/<app>` and caches checkouts in
+   `<bench>/.cache/agent-skills/`.
 2. Add a `skills.lock` at the app root, one skill per line:
 
    ```text
@@ -52,6 +54,16 @@ fresh clones and hosted code review.
 
    `sync` fills the block and `check` fails if anything between the markers
    differs from the pinned file. Text outside the markers is the app's own.
+
+6. Vendor any other pinned upstream directory, such as Frappe's Semgrep rules,
+   with a `vendor` line whose last column is a path inside the app:
+
+   ```text
+   vendor  frappe/semgrep-rules  rules  <sha>  semgrep/frappe
+   ```
+
+   `sync` replaces that path with the directory and `check` fails when it
+   differs. Exclude the copy from the app's linters and scans.
 
 To upgrade, change the revision in `skills.lock`, run `sync`, and review the
 diff before committing. Never edit a vendored copy; put adaptations in the

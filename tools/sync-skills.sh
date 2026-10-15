@@ -32,23 +32,29 @@ pinned_checkout() {
     local revision="$2"
     local checkout="${CACHE_ROOT}/${repository}/${revision}"
 
-    if [[ ! -d "${checkout}/.git" ]]; then
+    # Callers run this in a command substitution, which does not inherit
+    # errexit, so every step checks its own result. A cache entry is published
+    # only after it is verified at the pinned revision, and a broken entry left
+    # by an older run is replaced.
+    if [[ "$(git -C "${checkout}" rev-parse HEAD 2>/dev/null)" != "${revision}" ]]; then
         local staging
-        staging="$(mktemp -d "${TMPDIR:-/tmp}/agent-skills.XXXXXX")"
-        git init -q "${staging}"
-        git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git"
-        git -C "${staging}" fetch -q --depth 1 origin "${revision}"
-        git -C "${staging}" checkout -q --detach FETCH_HEAD
-        mkdir -p "$(dirname "${checkout}")"
-        rm -rf "${checkout}"
-        mv "${staging}" "${checkout}"
-    fi
-
-    local checked_out
-    checked_out="$(git -C "${checkout}" rev-parse HEAD)"
-    if [[ "${checked_out}" != "${revision}" ]]; then
-        echo "Expected ${repository} at ${revision}, found ${checked_out}." >&2
-        exit 1
+        staging="$(mktemp -d "${TMPDIR:-/tmp}/agent-skills.XXXXXX")" || return 1
+        if ! git init -q "${staging}" ||
+            ! git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git" ||
+            ! git -C "${staging}" fetch -q --depth 1 origin "${revision}" ||
+            ! git -C "${staging}" checkout -q --detach FETCH_HEAD ||
+            [[ "$(git -C "${staging}" rev-parse HEAD)" != "${revision}" ]]; then
+            rm -rf "${staging}"
+            echo "Could not fetch ${repository} at ${revision}; nothing was cached." >&2
+            return 1
+        fi
+        if ! mkdir -p "$(dirname "${checkout}")" ||
+            ! rm -rf "${checkout}" ||
+            ! mv "${staging}" "${checkout}"; then
+            rm -rf "${staging}"
+            echo "Could not cache ${repository} at ${checkout}." >&2
+            return 1
+        fi
     fi
 
     printf '%s\n' "${checkout}"

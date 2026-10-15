@@ -23,7 +23,7 @@ commands stay in each app's own `AGENTS.md`, and they win on conflict.
 Vendor plain files at a pinned revision. Symlinks and submodules break in CI,
 fresh clones and hosted code review.
 
-1. Copy `tools/sync-skills.sh` to the app's `scripts/`. It expects the app at
+1. Copy `tools/sync-skills.sh` (and, to run its regression tests, `tools/test_sync_skills.py`) to the app's `scripts/`. It expects the app at
    `<bench>/apps/<app>` and caches checkouts in `<bench>/.cache/agent-skills/`.
 2. Add a `skills.lock` at the app root, one skill per line:
 

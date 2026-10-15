@@ -34,16 +34,16 @@ pinned_checkout() {
 
     # Callers run this in a command substitution, which does not inherit
     # errexit, so every step checks its own result. A cache entry is published
-    # only after it is verified at the pinned revision, and a broken entry left
-    # by an older run is replaced.
-    if [[ "$(git -C "${checkout}" rev-parse HEAD 2>/dev/null)" != "${revision}" ]]; then
+    # only once it holds the pinned commit, and a broken entry left by an older
+    # run is replaced. Files are later read from the commit object, never the
+    # worktree, so local edits inside the cache cannot leak into vendored copies.
+    if ! git --git-dir="${checkout}/.git" cat-file -e "${revision}^{commit}" 2>/dev/null; then
         local staging
         staging="$(mktemp -d "${TMPDIR:-/tmp}/agent-skills.XXXXXX")" || return 1
         if ! git init -q "${staging}" ||
             ! git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git" ||
             ! git -C "${staging}" fetch -q --depth 1 origin "${revision}" ||
-            ! git -C "${staging}" checkout -q --detach FETCH_HEAD ||
-            [[ "$(git -C "${staging}" rev-parse HEAD)" != "${revision}" ]]; then
+            ! git -C "${staging}" cat-file -e "${revision}^{commit}"; then
             rm -rf "${staging}"
             echo "Could not fetch ${repository} at ${revision}; nothing was cached." >&2
             return 1
@@ -65,12 +65,15 @@ stage_skill() {
     local checkout
     checkout="$(pinned_checkout "${repository}" "${revision}")"
 
-    if [[ ! -d "${checkout}/${path}" ]]; then
+    local git_dir="${checkout}/.git"
+    if [[ "$(git --git-dir="${git_dir}" cat-file -t "${revision}:${path}" 2>/dev/null)" != "tree" ]]; then
         echo "${repository}@${revision} has no ${path}." >&2
         exit 1
     fi
 
-    cp -R "${checkout}/${path}" "${STAGE_ROOT}/${name}"
+    mkdir "${STAGE_ROOT}/${name}"
+    git --git-dir="${git_dir}" archive --format=tar "${revision}:${path}" |
+        tar -x -f - -C "${STAGE_ROOT}/${name}"
     if [[ "${excludes}" != "-" ]]; then
         local exclude
         for exclude in ${excludes//,/ }; do
@@ -126,15 +129,20 @@ process_rule() {
 
     local checkout
     checkout="$(pinned_checkout "${repository}" "${revision}")"
-    if [[ ! -f "${checkout}/${path}" ]]; then
+    local git_dir="${checkout}/.git"
+    if [[ "$(git --git-dir="${git_dir}" cat-file -t "${revision}:${path}" 2>/dev/null)" != "blob" ]]; then
         echo "${repository}@${revision} has no ${path}." >&2
         exit 1
     fi
 
+    local stem="${STAGE_ROOT}/rule-$(printf '%s' "${label}" | tr '/' '_')"
+    local source="${stem}.source"
+    local rendered="${stem}.rendered"
+    git --git-dir="${git_dir}" cat-file blob "${revision}:${path}" >"${source}"
+
     local target_file="${APP_ROOT}/${target}"
-    local rendered="${STAGE_ROOT}/rule-$(printf '%s' "${label}" | tr '/' '_')"
     if [[ ! -f "${target_file}" ]] ||
-        ! render_rules "${target_file}" "${checkout}/${path}" "${label}" "${revision}" "${rendered}"; then
+        ! render_rules "${target_file}" "${source}" "${label}" "${revision}" "${rendered}"; then
         echo "${target} needs exactly one BEGIN/END synced-rules marker pair for ${label}." >&2
         exit 1
     fi

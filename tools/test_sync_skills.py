@@ -66,11 +66,15 @@ class SyncSkillsTests(unittest.TestCase):
         self.cache = root / "cache"
         self.remote_base = f"file://{root / 'remotes'}"
 
-    def run_sync(self, mode, remote_base=None):
-        environment = os.environ | {
-            "AGENT_SKILLS_CACHE": str(self.cache),
-            "AGENT_SKILLS_REMOTE_BASE": remote_base or self.remote_base,
-        }
+    def run_sync(self, mode, remote_base=None, extra_environment=None):
+        environment = (
+            os.environ
+            | {
+                "AGENT_SKILLS_CACHE": str(self.cache),
+                "AGENT_SKILLS_REMOTE_BASE": remote_base or self.remote_base,
+            }
+            | (extra_environment or {})
+        )
         return subprocess.run(
             ["bash", str(self.app / "scripts" / "sync-skills.sh"), mode],
             cwd=self.app,
@@ -87,6 +91,11 @@ class SyncSkillsTests(unittest.TestCase):
 
     def vendored_skill(self):
         return self.app / ".agents" / "skills" / "demo"
+
+    def assert_no_staging_left(self):
+        parent = self.cache_entry().parent
+        leftovers = [p.name for p in parent.iterdir()] if parent.exists() else []
+        self.assertEqual([name for name in leftovers if name != self.revision], [])
 
     def test_sync_vendors_pinned_files_and_check_passes(self):
         result = self.run_sync("sync")
@@ -131,6 +140,7 @@ class SyncSkillsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("nothing was cached", result.stdout)
         self.assertFalse(self.cache_entry().exists())
+        self.assert_no_staging_left()
 
         self.assertEqual(self.run_sync("sync").returncode, 0)
 
@@ -141,6 +151,37 @@ class SyncSkillsTests(unittest.TestCase):
         result = self.run_sync("sync")
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((self.vendored_skill() / "SKILL.md").read_text(), "pinned skill\n")
+        self.assert_no_staging_left()
+
+    def test_entry_published_by_another_run_during_fetch_is_kept(self):
+        # A git wrapper publishes the cache entry, marked as another run's, as
+        # soon as this run starts its fetch.
+        wrapper_root = self.cache.parent / "bin"
+        wrapper_root.mkdir()
+        wrapper = wrapper_root / "git"
+        wrapper.write_text(
+            "#!/usr/bin/env bash\n"
+            'if [[ " $* " == *" fetch "* && ! -e "${PUBLISH_CACHE}" ]]; then\n'
+            '    "${REAL_GIT}" clone -q "${PUBLISH_FROM}" "${PUBLISH_CACHE}" &&\n'
+            '        touch "${PUBLISH_CACHE}/.git/published-by-another-run"\n'
+            "fi\n"
+            'exec "${REAL_GIT}" "$@"\n'
+        )
+        wrapper.chmod(0o755)
+
+        result = self.run_sync(
+            "sync",
+            extra_environment={
+                "PATH": f"{wrapper_root}{os.pathsep}{os.environ['PATH']}",
+                "REAL_GIT": shutil.which("git"),
+                "PUBLISH_FROM": str(self.remote),
+                "PUBLISH_CACHE": str(self.cache_entry()),
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertTrue((self.cache_entry() / ".git" / "published-by-another-run").exists())
+        self.assertEqual((self.vendored_skill() / "SKILL.md").read_text(), "pinned skill\n")
+        self.assert_no_staging_left()
 
 
 if __name__ == "__main__":

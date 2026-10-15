@@ -33,31 +33,61 @@ pinned_checkout() {
     local checkout="${CACHE_ROOT}/${repository}/${revision}"
 
     # Callers run this in a command substitution, which does not inherit
-    # errexit, so every step checks its own result. A cache entry is published
-    # only once it holds the pinned commit, and a broken entry left by an older
-    # run is replaced. Files are later read from the commit object, never the
-    # worktree, so local edits inside the cache cannot leak into vendored copies.
-    if ! git --git-dir="${checkout}/.git" cat-file -e "${revision}^{commit}" 2>/dev/null; then
-        local staging
-        staging="$(mktemp -d "${TMPDIR:-/tmp}/agent-skills.XXXXXX")" || return 1
-        if ! git init -q "${staging}" ||
-            ! git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git" ||
-            ! git -C "${staging}" fetch -q --depth 1 origin "${revision}" ||
-            ! git -C "${staging}" cat-file -e "${revision}^{commit}"; then
-            rm -rf "${staging}"
-            echo "Could not fetch ${repository} at ${revision}; nothing was cached." >&2
-            return 1
-        fi
-        if ! mkdir -p "$(dirname "${checkout}")" ||
-            ! rm -rf "${checkout}" ||
-            ! mv "${staging}" "${checkout}"; then
-            rm -rf "${staging}"
-            echo "Could not cache ${repository} at ${checkout}." >&2
-            return 1
-        fi
+    # errexit, so every step checks its own result.
+    if ! holds_revision "${checkout}" "${revision}"; then
+        publish_checkout "${repository}" "${revision}" "${checkout}" || return 1
     fi
 
     printf '%s\n' "${checkout}"
+}
+
+# Succeeds when the cache entry holds the pinned commit. Files are later read
+# from the commit object, never the worktree, so local edits inside the cache
+# cannot leak into vendored copies.
+holds_revision() {
+    git --git-dir="$1/.git" cat-file -e "$2^{commit}" 2>/dev/null
+}
+
+# Fetches the revision into a staging directory beside the cache entry, so
+# publishing is a rename on one filesystem. Runs from other worktrees share the
+# cache: the entry is checked again after the fetch, so one another run
+# published meanwhile is kept, and only an invalid entry is renamed aside and
+# removed.
+publish_checkout() {
+    local repository="$1" revision="$2" checkout="$3"
+    local parent staging
+    parent="$(dirname "${checkout}")"
+    if ! mkdir -p "${parent}" || ! staging="$(mktemp -d "${parent}/.staging.XXXXXX")"; then
+        echo "Could not stage ${repository} in ${parent}." >&2
+        return 1
+    fi
+
+    if ! git init -q "${staging}" ||
+        ! git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git" ||
+        ! git -C "${staging}" fetch -q --depth 1 origin "${revision}" ||
+        ! holds_revision "${staging}" "${revision}"; then
+        rm -rf "${staging}"
+        echo "Could not fetch ${repository} at ${revision}; nothing was cached." >&2
+        return 1
+    fi
+
+    if holds_revision "${checkout}" "${revision}"; then
+        rm -rf "${staging}"
+        return
+    fi
+
+    if [[ -e "${checkout}" ]] && mv "${checkout}" "${staging}.discarded" 2>/dev/null; then
+        rm -rf "${staging}.discarded"
+    fi
+    mv "${staging}" "${checkout}" 2>/dev/null || true
+    # If another run published between the check and the rename, mv placed the
+    # staging directory inside that entry; remove it from there.
+    rm -rf "${checkout:?}/$(basename "${staging}")" "${staging}"
+
+    if ! holds_revision "${checkout}" "${revision}"; then
+        echo "Could not cache ${repository} at ${checkout}." >&2
+        return 1
+    fi
 }
 
 stage_skill() {

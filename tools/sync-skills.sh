@@ -22,9 +22,14 @@ LOCK_FILE="${APP_ROOT}/skills.lock"
 SKILLS_DIR="${APP_ROOT}/.agents/skills"
 CACHE_ROOT="${AGENT_SKILLS_CACHE:-${BENCH_ROOT}/.cache/agent-skills}"
 REMOTE_BASE="${AGENT_SKILLS_REMOTE_BASE:-https://github.com}"
+LOCK_TIMEOUT="${AGENT_SKILLS_LOCK_TIMEOUT:-120}"
 
 usage() {
     echo "Usage: scripts/sync-skills.sh [check|sync]" >&2
+}
+
+cache_holds() {
+    git --git-dir="$1/.git" cat-file -e "$2^{commit}" 2>/dev/null
 }
 
 pinned_checkout() {
@@ -33,61 +38,56 @@ pinned_checkout() {
     local checkout="${CACHE_ROOT}/${repository}/${revision}"
 
     # Callers run this in a command substitution, which does not inherit
-    # errexit, so every step checks its own result.
-    if ! holds_revision "${checkout}" "${revision}"; then
-        publish_checkout "${repository}" "${revision}" "${checkout}" || return 1
+    # errexit, so every step checks its own result. Files are later read from
+    # the commit object, never the worktree, so local edits inside the cache
+    # cannot leak into vendored copies.
+    if cache_holds "${checkout}" "${revision}"; then
+        printf '%s\n' "${checkout}"
+        return 0
     fi
 
-    printf '%s\n' "${checkout}"
-}
-
-# Succeeds when the cache entry holds the pinned commit. Files are later read
-# from the commit object, never the worktree, so local edits inside the cache
-# cannot leak into vendored copies.
-holds_revision() {
-    git --git-dir="$1/.git" cat-file -e "$2^{commit}" 2>/dev/null
-}
-
-# Fetches the revision into a staging directory beside the cache entry, so
-# publishing is a rename on one filesystem. Runs from other worktrees share the
-# cache: the entry is checked again after the fetch, so one another run
-# published meanwhile is kept, and only an invalid entry is renamed aside and
-# removed.
-publish_checkout() {
-    local repository="$1" revision="$2" checkout="$3"
-    local parent staging
+    # Stage beside the entry so publishing is a same-filesystem rename, and
+    # fetch outside the lock so concurrent runs do not wait on the network.
+    local parent staging lock="${checkout}.lock"
     parent="$(dirname "${checkout}")"
-    if ! mkdir -p "${parent}" || ! staging="$(mktemp -d "${parent}/.staging.XXXXXX")"; then
-        echo "Could not stage ${repository} in ${parent}." >&2
-        return 1
-    fi
-
+    mkdir -p "${parent}" || return 1
+    staging="$(mktemp -d "${parent}/.staging.XXXXXX")" || return 1
+    # Clean up explicitly on every path: bash 3.2 does not run an EXIT trap set
+    # inside a command substitution.
     if ! git init -q "${staging}" ||
         ! git -C "${staging}" remote add origin "${REMOTE_BASE}/${repository}.git" ||
         ! git -C "${staging}" fetch -q --depth 1 origin "${revision}" ||
-        ! holds_revision "${staging}" "${revision}"; then
+        ! cache_holds "${staging}" "${revision}"; then
         rm -rf "${staging}"
         echo "Could not fetch ${repository} at ${revision}; nothing was cached." >&2
         return 1
     fi
 
-    if holds_revision "${checkout}" "${revision}"; then
-        rm -rf "${staging}"
-        return
+    # Publish under a lock and recheck first: another run may have published a
+    # valid entry while this one fetched, and that entry may be in use. Only an
+    # invalid entry is ever removed.
+    local waited=0
+    until mkdir "${lock}" 2>/dev/null; do
+        if ((waited >= LOCK_TIMEOUT * 10)); then
+            rm -rf "${staging}"
+            echo "Timed out waiting for ${lock}; remove it if no sync is running." >&2
+            return 1
+        fi
+        sleep 0.1
+        waited=$((waited + 1))
+    done
+    if ! cache_holds "${checkout}" "${revision}"; then
+        if ! rm -rf "${checkout}" || ! mv "${staging}" "${checkout}"; then
+            rm -rf "${staging}"
+            rmdir "${lock}"
+            echo "Could not cache ${repository} at ${checkout}." >&2
+            return 1
+        fi
     fi
+    rm -rf "${staging}"
+    rmdir "${lock}"
 
-    if [[ -e "${checkout}" ]] && mv "${checkout}" "${staging}.discarded" 2>/dev/null; then
-        rm -rf "${staging}.discarded"
-    fi
-    mv "${staging}" "${checkout}" 2>/dev/null || true
-    # If another run published between the check and the rename, mv placed the
-    # staging directory inside that entry; remove it from there.
-    rm -rf "${checkout:?}/$(basename "${staging}")" "${staging}"
-
-    if ! holds_revision "${checkout}" "${revision}"; then
-        echo "Could not cache ${repository} at ${checkout}." >&2
-        return 1
-    fi
+    printf '%s\n' "${checkout}"
 }
 
 stage_skill() {

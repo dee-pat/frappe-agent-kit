@@ -49,24 +49,27 @@ class SyncSkillsTests(unittest.TestCase):
             ["git", "rev-parse", "HEAD"], cwd=self.remote, check=True, capture_output=True, text=True
         ).stdout.strip()
 
-        self.app = root / "bench" / "apps" / "demo"
-        (self.app / "scripts").mkdir(parents=True)
-        (self.app / ".agents" / "skills").mkdir(parents=True)
-        # The script sits beside this test in both the app and the kit.
-        script = Path(__file__).resolve().parent / "sync-skills.sh"
-        shutil.copy2(script, self.app / "scripts" / "sync-skills.sh")
-        (self.app / "skills.lock").write_text(
-            f"demo  acme/kit  skills/demo      {self.revision}  evals\n"
-            f"rule  acme/kit  rules/shared.md  {self.revision}  AGENTS.md\n"
-        )
-        (self.app / "AGENTS.md").write_text(
-            f"# Demo\n\n{RULES_BEGIN}unsynced -->\n{RULES_END}\n\nApp rule.\n"
-        )
-
+        self.bench = root / "bench"
+        self.app = self.make_app("demo")
         self.cache = root / "cache"
         self.remote_base = f"file://{root / 'remotes'}"
 
-    def run_sync(self, mode, remote_base=None, extra_environment=None):
+    def make_app(self, name):
+        app = self.bench / "apps" / name
+        (app / "scripts").mkdir(parents=True)
+        (app / ".agents" / "skills").mkdir(parents=True)
+        # The script sits beside this test in both the app and the kit.
+        script = Path(__file__).resolve().parent / "sync-skills.sh"
+        shutil.copy2(script, app / "scripts" / "sync-skills.sh")
+        (app / "skills.lock").write_text(
+            f"demo  acme/kit  skills/demo      {self.revision}  evals\n"
+            f"rule  acme/kit  rules/shared.md  {self.revision}  AGENTS.md\n"
+        )
+        (app / "AGENTS.md").write_text(f"# Demo\n\n{RULES_BEGIN}unsynced -->\n{RULES_END}\n\nApp rule.\n")
+        return app
+
+    def sync_command(self, mode, app=None, remote_base=None, lock_timeout=None, extra_environment=None):
+        app = app or self.app
         environment = (
             os.environ
             | {
@@ -75,27 +78,31 @@ class SyncSkillsTests(unittest.TestCase):
             }
             | (extra_environment or {})
         )
-        return subprocess.run(
-            ["bash", str(self.app / "scripts" / "sync-skills.sh"), mode],
-            cwd=self.app,
-            env=environment,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=120,
-            check=False,
-        )
+        if lock_timeout is not None:
+            environment["AGENT_SKILLS_LOCK_TIMEOUT"] = str(lock_timeout)
+        return {
+            "args": ["bash", str(app / "scripts" / "sync-skills.sh"), mode],
+            "cwd": app,
+            "env": environment,
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.STDOUT,
+            "text": True,
+        }
+
+    def run_sync(self, mode, **options):
+        return subprocess.run(**self.sync_command(mode, **options), timeout=120, check=False)
+
+    def cache_leftovers(self):
+        parent = self.cache_entry().parent
+        if not parent.exists():
+            return []
+        return sorted(path.name for path in parent.iterdir() if path.name != self.revision)
 
     def cache_entry(self):
         return self.cache / "acme" / "kit" / self.revision
 
     def vendored_skill(self):
         return self.app / ".agents" / "skills" / "demo"
-
-    def assert_no_staging_left(self):
-        parent = self.cache_entry().parent
-        leftovers = [p.name for p in parent.iterdir()] if parent.exists() else []
-        self.assertEqual([name for name in leftovers if name != self.revision], [])
 
     def test_sync_vendors_pinned_files_and_check_passes(self):
         result = self.run_sync("sync")
@@ -140,7 +147,7 @@ class SyncSkillsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("nothing was cached", result.stdout)
         self.assertFalse(self.cache_entry().exists())
-        self.assert_no_staging_left()
+        self.assertEqual(self.cache_leftovers(), [])
 
         self.assertEqual(self.run_sync("sync").returncode, 0)
 
@@ -151,7 +158,7 @@ class SyncSkillsTests(unittest.TestCase):
         result = self.run_sync("sync")
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((self.vendored_skill() / "SKILL.md").read_text(), "pinned skill\n")
-        self.assert_no_staging_left()
+        self.assertEqual(self.cache_leftovers(), [])
 
     def test_entry_published_by_another_run_during_fetch_is_kept(self):
         # A git wrapper publishes the cache entry, marked as another run's, as
@@ -181,7 +188,37 @@ class SyncSkillsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertTrue((self.cache_entry() / ".git" / "published-by-another-run").exists())
         self.assertEqual((self.vendored_skill() / "SKILL.md").read_text(), "pinned skill\n")
-        self.assert_no_staging_left()
+        self.assertEqual(self.cache_leftovers(), [])
+
+    def test_concurrent_cold_cache_runs_all_succeed(self):
+        apps = [self.app] + [self.make_app(f"demo{index}") for index in range(1, 8)]
+        processes = [subprocess.Popen(**self.sync_command("sync", app=app)) for app in apps]
+        outputs = [process.communicate(timeout=120)[0] for process in processes]
+
+        for app, process, output in zip(apps, processes, outputs, strict=True):
+            self.assertEqual(process.returncode, 0, f"{app.name}: {output}")
+            self.assertEqual((app / ".agents" / "skills" / "demo" / "SKILL.md").read_text(), "pinned skill\n")
+        self.assertEqual(self.cache_leftovers(), [])
+        self.assertEqual(self.run_sync("check").returncode, 0)
+
+    def test_held_lock_times_out_without_publishing(self):
+        lock = self.cache_entry().with_name(f"{self.revision}.lock")
+        lock.mkdir(parents=True)
+
+        result = self.run_sync("check", lock_timeout=1)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("Timed out waiting", result.stdout)
+        self.assertFalse(self.cache_entry().exists())
+        self.assertEqual(self.cache_leftovers(), [lock.name])
+
+    def test_failed_fetch_leaves_another_runs_lock(self):
+        lock = self.cache_entry().with_name(f"{self.revision}.lock")
+        lock.mkdir(parents=True)
+
+        result = self.run_sync("check", remote_base=f"file://{self.cache.parent / 'missing'}")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertTrue(lock.is_dir())
+        self.assertEqual(self.cache_leftovers(), [lock.name])
 
 
 if __name__ == "__main__":

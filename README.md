@@ -13,7 +13,7 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there.
 | `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes     |
 | `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                     |
 | `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head                 |
-| `tools/sync-skills.sh`      | Vendor pinned skills into an app and check that the copies have not drifted                          |
+| `tools/sync-skills.sh`      | Vendor pinned skills and the rules block into an app, and check that the copies have not drifted     |
 
 Nothing here is app-specific. App rules, domain conventions, site names and
 commands stay in each app's own `AGENTS.md`, and they win on conflict.
@@ -37,10 +37,21 @@ fresh clones and hosted code review.
    then commit the lock and the copies together. `scripts/sync-skills.sh check`
    fails when a copy differs from its pin; run it in CI.
 4. For Claude Code, link `.claude/skills` to `../.agents/skills`.
-5. Paste `rules/frappe.md` into the app's `AGENTS.md` between
-   `<!-- BEGIN frappe-agent-kit:rules/frappe.md@<sha> -->` and
-   `<!-- END frappe-agent-kit:rules/frappe.md -->`. The sync script does not yet
-   manage this block; until it does, update it by hand when you bump the pin.
+5. Embed the always-on rules: add this line to `skills.lock`
+
+   ```text
+   rule  dee-pat/frappe-agent-kit  rules/frappe.md  <sha>  AGENTS.md
+   ```
+
+   and put an empty marker pair where the block belongs in `AGENTS.md`:
+
+   ```text
+   <!-- BEGIN synced-rules: dee-pat/frappe-agent-kit/rules/frappe.md@<sha> -->
+   <!-- END synced-rules: dee-pat/frappe-agent-kit/rules/frappe.md -->
+   ```
+
+   `sync` fills the block and `check` fails if anything between the markers
+   differs from the pinned file. Text outside the markers is the app's own.
 
 To upgrade, change the revision in `skills.lock`, run `sync`, and review the
 diff before committing. Never edit a vendored copy; put adaptations in the

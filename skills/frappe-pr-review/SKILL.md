@@ -43,12 +43,10 @@ The app's `AGENTS.md` and review docs win on conflict and may extend the report
    scheduler), patches in `patches.txt`, and the tests that cover it. Search for
    other callers before judging a signature or semantics change.
 4. **Apply `frappe-code-review`** as the checklist, spending most effort on its
-   correctness and security sections. Also apply Frappe's maintainer guide,
-   [`code_review.md`](https://github.com/frappe/frappe/blob/develop/code_review.md):
-   read `<bench>/apps/frappe/code_review.md` when the installed branch has it,
-   otherwise fetch it (`gh api repos/frappe/frappe/contents/code_review.md
-   -H "Accept: application/vnd.github.raw"`). Load only the sections that match
-   the change.
+   correctness and security sections. When the installed framework ships
+   Frappe's maintainer guide, `<bench>/apps/frappe/code_review.md`, apply the
+   sections that match the change. Frappe v16 does not ship it; skip it rather
+   than fetching it from `develop`, which may describe behaviour v16 lacks.
 5. **Run Frappe's Semgrep rules on the range:**
    `scripts/semgrep-pr.sh <base> <head>`. It scans the head commit in a temporary
    clone and reports only findings the change introduces. If the app has no

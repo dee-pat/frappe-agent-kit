@@ -30,12 +30,14 @@ Order by severity, then by file. Each finding:
 - **Evidence:** `frappe/model/db_query.py:674` (v16.51.0) adds match
   conditions only when `ignore_permissions` is false; no other check guards the
   call path from `@frappe.whitelist()` at line 38.
-- **Fix:** use `frappe.get_list` and keep the hook; add a test that an investor
-  without a User Permission on the portfolio gets `frappe.PermissionError`.
+- **Fix:** use `frappe.qb.get_query(..., ignore_permissions=False)` so the hook
+  runs; add a test that an investor without a User Permission on the portfolio
+  gets no rows.
 ```
 
 The example is illustrative; every path, line and version in a real finding
-comes from code you read.
+comes from code you read. An app's review contract may prefix each heading with
+its own finding ID, for example `### F1 [P1] ...`.
 
 - **Severity**
   - **P0:** broad, immediate harm: data exposure across tenants or users, data

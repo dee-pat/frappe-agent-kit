@@ -21,7 +21,7 @@ their existing subscriptions; nothing here calls a model API.
 | Piece                              | Owns                                                                                     |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- |
 | `frappe-code-review` (frappe/skills) | What to look for: correctness, security, performance, concurrency, API design, tests    |
-| `frappe/frappe` `code_review.md`   | Maintainers' review checklist and verdict rules                                          |
+| `frappe/frappe` `code_review.md`   | Maintainers' review checklist, when the installed version ships it (v16 does not)        |
 | `skills/frappe-pr-review/`         | The procedure: scope, evidence, Semgrep, framework source, verification, report format  |
 | `tools/semgrep-pr.sh`              | Reproducible pattern checks; reports only findings the change introduces               |
 | `templates/semgrep-pr.yml`         | Report-only PR workflow for apps without a Semgrep CI job                                |

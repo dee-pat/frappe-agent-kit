@@ -2,9 +2,15 @@
 
 Frappe v16 rules shared across apps; the app's own rules win on conflict. Use
 `frappe-app-dev` for Frappe work, `code-style` when writing code,
-`frappe-code-review` when reviewing, and `frappe-migration` for patches,
-indexes, DocPerms and schema changes.
+`frappe-migration` for patches, indexes, DocPerms and schema changes,
+`frappe-code-review` as the review checklist, and `frappe-pr-review` to review a
+PR, branch or diff, including your own before opening a PR. Review is read-only
+unless the user asks for fixes.
 
+- The installed framework at `<bench>/apps/frappe` is the authority on Frappe
+  behaviour: when correctness depends on a lifecycle, permission, transaction or
+  hook detail, search it and read the relevant function rather than relying on
+  memory or upstream `develop`.
 - Use v16 APIs and supported hooks; never monkey-patch core.
 - User-facing multi-record reads use `frappe.qb.get_query` with
   `ignore_permissions=False`. Use `ignore_permissions=True` only in reports,

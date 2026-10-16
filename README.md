@@ -3,7 +3,8 @@
 Agent guidance shared by Frappe Framework v16 apps: always-on rules for an
 app's `AGENTS.md`, and skills that Codex and Claude Code load on demand. It adds
 to [frappe/skills](https://github.com/frappe/skills) rather than replacing it:
-pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there.
+pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
+[frappe/semgrep-rules](https://github.com/frappe/semgrep-rules) for Semgrep.
 
 ## Contents
 
@@ -13,8 +14,13 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there.
 | `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes |
 | `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                 |
 | `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head              |
+| `skills/frappe-pr-review/`  | Evidence-based PR review: `frappe-code-review`, Semgrep and the installed framework, one report   |
 | `tools/sync-skills.sh`      | Vendor pinned skills, directories and the rules block into an app; check the copies match         |
 | `tools/test_sync_skills.py` | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
+| `tools/semgrep-pr.sh`       | Report only the Frappe Semgrep findings a commit range introduces, without touching the checkout  |
+| `tools/test_semgrep_pr.py`  | Tests for `semgrep-pr.sh`; need Semgrep (`SEMGREP_BIN=<bench>/env/bin/semgrep`)                   |
+| `templates/semgrep-pr.yml`  | Read-only, report-only GitHub Actions workflow that runs `semgrep-pr.sh` on pull requests         |
+| `docs/pr-review.md`         | Design, scope and progress of the PR-review setup                                                 |
 
 Nothing here is app-specific. App rules, domain conventions, site names and
 commands stay in each app's own `AGENTS.md`, and they win on conflict.
@@ -32,7 +38,9 @@ fresh clones and hosted code review.
    ```text
    # name              repository               path                       revision (40 hex)  excludes
    frappe-app-dev      frappe/skills            skills/frappe-app-dev      <sha>              -
+   frappe-code-review  frappe/skills            skills/frappe-code-review  <sha>              -
    frappe-migration    dee-pat/frappe-agent-kit skills/frappe-migration    <sha>              -
+   frappe-pr-review    dee-pat/frappe-agent-kit skills/frappe-pr-review    <sha>              -
    ```
 
 3. Run `scripts/sync-skills.sh sync` to copy each skill into `.agents/skills/`,
@@ -64,6 +72,32 @@ fresh clones and hosted code review.
 
    `sync` replaces that path with the directory and `check` fails when it
    differs. Exclude the copy from the app's linters and scans.
+
+7. For PR reviews, copy `tools/semgrep-pr.sh` to the app's `scripts/`. It
+   scans a commit range against `semgrep/frappe/` in a temporary clone and
+   reports only the findings the range introduces, so existing debt stays out
+   of the review:
+
+   ```bash
+   scripts/semgrep-pr.sh origin/develop          # report only, exit 0
+   scripts/semgrep-pr.sh --fail-on-new main HEAD # exit 1 on a new finding
+   ```
+
+   Keep any full-scan Semgrep gate the app has. Apps without a Semgrep CI job
+   can copy `templates/semgrep-pr.yml` to `.github/workflows/`.
+
+## Review a PR
+
+With `frappe-pr-review` vendored, ask either agent in the app's checkout:
+
+- Claude Code: `/frappe-pr-review 123`, or "review PR 123 with frappe-pr-review".
+- Codex: `$frappe-pr-review 123`, or the same request in plain words.
+
+The skill pins the range, reads the intent, applies `frappe-code-review`, runs
+`semgrep-pr.sh`, checks framework behaviour in `<bench>/apps/frappe`, verifies
+each finding and writes one report in the format of
+[report.md](skills/frappe-pr-review/references/report.md). It does not fix,
+commit, approve or post comments unless asked.
 
 To upgrade, change the revision in `skills.lock`, run `sync`, and review the
 diff before committing. Never edit a vendored copy; put adaptations in the

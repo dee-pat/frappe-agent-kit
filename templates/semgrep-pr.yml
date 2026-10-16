@@ -1,0 +1,41 @@
+# Report the Frappe Semgrep findings a pull request introduces.
+# Copy to .github/workflows/ in an app that has scripts/semgrep-pr.sh and the
+# Frappe rules vendored in semgrep/frappe/. It only reports; add --fail-on-new
+# once the team agrees new findings should block. Apps that already run a full
+# Semgrep scan in CI can add the "Report new findings" step to that job instead.
+name: Semgrep PR
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep-pr:
+    name: Frappe Semgrep (new findings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The merge base with the PR's base branch must be present.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install Semgrep
+        # Keep in step with the version the app's local gate pins.
+        run: pip install 'semgrep==1.172.0'
+
+      - name: Report new findings
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/semgrep-pr.sh "$BASE_SHA" "$HEAD_SHA"

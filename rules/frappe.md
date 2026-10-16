@@ -6,6 +6,8 @@ Frappe v16 rules shared across apps; the app's own rules win on conflict. Use
 `frappe-code-review` as the review checklist, and `frappe-pr-review` to review a
 PR, branch or diff, including your own before opening a PR. Review is read-only
 unless the user asks for fixes.
+These rules and the app's own rules win over examples and checklists in the
+pinned upstream skills, some of which read records with `get_all`/`get_list`.
 
 - The installed framework at `<bench>/apps/frappe` is the authority on Frappe
   behaviour: when correctness depends on a lifecycle, permission, transaction or

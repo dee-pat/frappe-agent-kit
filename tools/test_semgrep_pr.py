@@ -121,6 +121,26 @@ class SemgrepPrTests(unittest.TestCase):
         results = json.loads(output.read_text())["results"]
         self.assertEqual([finding["path"] for finding in results], ["change.py"])
 
+    def test_accepts_relative_semgrep_bin(self):
+        # The scan runs inside a temporary clone, so a path relative to the
+        # caller's directory must be resolved first. A short path is needed:
+        # one that climbs to / resolves from anywhere.
+        wrapper = self.app.parent / "tools-bin" / "semgrep"
+        wrapper.parent.mkdir()
+        wrapper.write_text(f'#!/bin/sh\nexec "{SEMGREP}" "$@"\n')
+        wrapper.chmod(0o755)
+
+        result = subprocess.run(
+            [str(self.app / "scripts" / "semgrep-pr.sh"), "main"],
+            cwd=self.app,
+            env=os.environ | {"SEMGREP_BIN": "../tools-bin/semgrep"},
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1 new finding(s)", result.stdout)
+
     def test_rejects_unknown_revision(self):
         result = self.run_script("no-such-branch")
 

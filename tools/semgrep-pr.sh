@@ -68,7 +68,8 @@ semgrep_binary() {
         echo "Semgrep is unavailable; run 'bench setup requirements --dev' or set SEMGREP_BIN." >&2
         exit 1
     fi
-    printf '%s\n' "${binary}"
+    # The scan runs from the temporary clone, so make a relative path absolute.
+    printf '%s/%s\n' "$(cd "$(dirname "${binary}")" && pwd)" "$(basename "${binary}")"
 }
 
 resolve() {

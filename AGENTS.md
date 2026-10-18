@@ -38,6 +38,7 @@ paths, so the kit passes them the templates explicitly.
 
 Conventional Commit titles: `feat:`, `fix:`, `docs:`, `ci:`, `test:`,
 `refactor:`, `chore:`.
+
 Like apps under `rules/frappe.md`, kit commits and pull requests carry no AI
 attribution: no `Co-Authored-By` trailer for an AI agent and no "Generated
 with ..." line.

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pull requests cancel their superseded runs; pushes to main never cancel.
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Tools, rules and templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install Semgrep and PyYAML
+        # Keep Semgrep in step with the version apps pin in their local gates.
+        run: pip install 'semgrep==1.172.0' 'PyYAML==6.0.3'
+
+      - name: Run tool tests
+        # test_semgrep_pr.py skips without Semgrep, so require it here.
+        run: |
+          set -euo pipefail
+          export SEMGREP_BIN="$(command -v semgrep)"
+          test "$("$SEMGREP_BIN" --version)" = 1.172.0
+          for test_file in tools/test_*.py; do
+            echo "::group::${test_file}"
+            python3 "$test_file" -v
+            echo "::endgroup::"
+          done
+
+      - name: Test kit Semgrep rules
+        run: semgrep --test --metrics=off --disable-version-check --config semgrep/kit semgrep/kit/tests
+
+      - name: Parse templates
+        run: |
+          python3 - <<'EOF'
+          import json
+          from pathlib import Path
+
+          import yaml
+
+          paths = sorted(p for p in Path("templates").rglob("*") if p.is_file())
+          for path in paths:
+              if path.suffix == ".json":
+                  json.loads(path.read_text())
+              elif path.suffix in {".yml", ".yaml"}:
+                  yaml.safe_load(path.read_text())
+              else:
+                  continue
+              print(f"parsed {path}")
+          EOF

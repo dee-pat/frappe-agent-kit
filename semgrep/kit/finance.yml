@@ -1,0 +1,18 @@
+# Shared Frappe kit rule, optional: vendor and run it in apps that handle money
+# or quantities. Decimal(0.1) keeps the binary float's error
+# (0.1000000000000000055...), so build Decimal values from strings or from
+# values already rounded to the field's precision.
+rules:
+  - id: frappe-kit-decimal-from-float-literal
+    languages: [python]
+    message: >-
+      Construct precision-sensitive Decimal values from strings, not float
+      literals: Decimal(0.1) is not Decimal("0.1").
+    patterns:
+      - pattern-either:
+          - pattern: Decimal($VALUE)
+          - pattern: decimal.Decimal($VALUE)
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: '^-?([0-9]+\.[0-9]*|\.[0-9]+|[0-9]+(\.[0-9]*)?[eE][-+]?[0-9]+)$'
+    severity: ERROR

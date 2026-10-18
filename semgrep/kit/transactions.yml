@@ -1,0 +1,17 @@
+# Shared Frappe kit rule: enforces the rules/frappe.md line "No
+# frappe.db.commit() or rollback() in controllers, hooks, request handlers or
+# shared services". Frappe commits or rolls back the request, job or patch as a
+# whole; a manual boundary leaves partial writes behind on a later error.
+# Where a manual boundary is justified (for example a long batch that commits
+# per chunk), mark the line with "# nosemgrep: <rule id>" and say why.
+rules:
+  - id: frappe-kit-no-manual-transaction-boundary
+    languages: [python]
+    message: >-
+      Do not commit or roll back the database transaction manually. Let Frappe
+      manage the transaction boundary so a later error cannot leave partial
+      writes behind.
+    pattern-either:
+      - pattern: frappe.db.commit()
+      - pattern: frappe.db.rollback()
+    severity: ERROR

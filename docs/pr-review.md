@@ -73,6 +73,10 @@ PR-scoped view used by reviewers.
   Codex CLI 0.163.0 (`gpt-6-luna`, read-only sandbox) also listed
   `frappe-pr-review` from `.agents/skills/`. The workflow template parses as
   YAML but has not run on GitHub.
+- 2026-10-18: on `feat/ci-review-scoring-semgrep`, `report.md` gained the
+  merge-readiness score and the blocking rule, generalized from
+  `bond_management`'s review contract; the kit gained CI and its own Semgrep
+  rules in `semgrep/kit/`.
 
 ## Follow-ups
 

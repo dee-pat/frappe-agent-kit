@@ -24,7 +24,7 @@ python3 tools/test_sync_skills.py
 SEMGREP_BIN=<bench>/env/bin/semgrep python3 tools/test_semgrep_pr.py
 semgrep --test --config semgrep/kit semgrep/kit/tests
 python3 tools/test_deny_rules.py templates/codex.rules templates/claude-settings.json
-python3 tools/test_workflow_concurrency.py templates/ci.yml .github/workflows/ci.yml
+python3 tools/test_workflow_concurrency.py templates/*.yml .github/workflows/*.yml
 ```
 
 `test_semgrep_pr.py` needs an absolute `SEMGREP_BIN` (or Semgrep on `PATH`) and

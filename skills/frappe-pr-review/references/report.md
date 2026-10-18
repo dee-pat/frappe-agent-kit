@@ -21,19 +21,19 @@ a fix prompt); include them where it says.
 Order by severity, then by file. Each finding:
 
 ```markdown
-### [P1] Investor can read another portfolio's transactions
+### [P1] Customer can read another company's invoices
 
-`app/api/portfolio.py:42-57`, confirmed
+`app/api/billing.py:42-57`, confirmed
 
-`get_transactions` passes `ignore_permissions=True` to `frappe.get_all`, so the
+`get_invoices` passes `ignore_permissions=True` to `frappe.get_all`, so the
 `permission_query_conditions` hook in `hooks.py` never runs for this endpoint.
 
-- **When:** any logged-in user calls the method with another portfolio's name.
+- **When:** any logged-in user calls the method with another company's name.
 - **Evidence:** `frappe/model/db_query.py:674` (v16.51.0) adds match
   conditions only when `ignore_permissions` is false; no other check guards the
   call path from `@frappe.whitelist()` at line 38.
 - **Fix:** use `frappe.qb.get_query(..., ignore_permissions=False)` so the hook
-  runs; add a test that an investor without a User Permission on the portfolio
+  runs; add a test that a customer without a User Permission on the company
   gets no rows.
 ```
 

@@ -32,15 +32,18 @@ jobs:
 
       - name: Run tool tests
         # test_semgrep_pr.py skips without Semgrep, so require it here. The
-        # copied-into-app checks run against the templates and this workflow.
+        # copied-into-app checks run against the templates and every workflow;
+        # the glob covers a new workflow template without a list to update.
         run: |
           set -euo pipefail
+          shopt -s nullglob
+          workflows=(templates/*.yml templates/*.yaml .github/workflows/*.yml .github/workflows/*.yaml)
           export SEMGREP_BIN="$(command -v semgrep)"
           test "$("$SEMGREP_BIN" --version)" = 1.172.0
           for test_file in tools/test_*.py; do
             case "$test_file" in
               tools/test_deny_rules.py) args="templates/codex.rules templates/claude-settings.json" ;;
-              tools/test_workflow_concurrency.py) args="templates/ci.yml .github/workflows/ci.yml" ;;
+              tools/test_workflow_concurrency.py) args="${workflows[*]}" ;;
               *) args="" ;;
             esac
             echo "::group::${test_file}"

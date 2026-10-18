@@ -32,7 +32,7 @@ def git(*args, cwd):
 
 class SyncSkillsTests(unittest.TestCase):
     def setUp(self):
-        temporary_directory = tempfile.TemporaryDirectory(prefix="bond-sync-skills-")
+        temporary_directory = tempfile.TemporaryDirectory(prefix="kit-sync-skills-")
         self.addCleanup(temporary_directory.cleanup)
         root = Path(temporary_directory.name)
 

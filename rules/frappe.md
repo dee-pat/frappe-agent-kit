@@ -44,3 +44,5 @@ pinned upstream skills, some of which read records with `get_all`/`get_list`.
 - A gate passes only when run on the current change with an observed zero exit
   status. Report an unavailable gate as a blocker, and never weaken an assertion
   to make CI pass.
+- Commits and pull requests carry no AI attribution: no `Co-Authored-By`
+  trailer for an AI agent and no "Generated with ..." line.

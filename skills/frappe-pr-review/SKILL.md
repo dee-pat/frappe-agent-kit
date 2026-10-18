@@ -10,7 +10,7 @@ risks, regressions and missing necessary tests. Prefer a few well-grounded
 findings to a long speculative list. Style preferences are not findings.
 
 The app's `AGENTS.md` and review docs win on conflict and may extend the report
-(for example a merge-readiness score). Read them first.
+(for example a fix prompt or domain examples of each priority). Read them first.
 
 ## Ground rules
 
@@ -119,4 +119,5 @@ The installed framework is the authority on behaviour; skills are guidance.
 
 ## Report
 
-Read [report.md](references/report.md) before writing the report.
+Read [report.md](references/report.md) before writing the report. It defines
+the priorities, the merge-readiness score and when a finding blocks merge.

@@ -22,12 +22,13 @@ rules and the tools that vendor them. `CLAUDE.md` is a symlink to this file.
 ```bash
 python3 tools/test_sync_skills.py
 SEMGREP_BIN=<bench>/env/bin/semgrep python3 tools/test_semgrep_pr.py
+semgrep --test --config semgrep/kit semgrep/kit/tests
 ```
 
 `test_semgrep_pr.py` needs an absolute `SEMGREP_BIN` (or Semgrep on `PATH`) and
 skips without Semgrep; a skip is not a pass. CI
 (`.github/workflows/ci.yml`) pins Semgrep 1.172.0 and runs every
-`tools/test_*.py` and a parse of `templates/`.
+`tools/test_*.py`, the kit Semgrep rule tests and a parse of `templates/`.
 
 ## Commits
 

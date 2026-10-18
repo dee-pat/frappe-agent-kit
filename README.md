@@ -19,6 +19,7 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
 | `tools/test_sync_skills.py` | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
 | `tools/semgrep-pr.sh`       | Report only the Frappe Semgrep findings a commit range introduces, without touching the checkout  |
 | `tools/test_semgrep_pr.py`  | Tests for `semgrep-pr.sh`; need Semgrep (`SEMGREP_BIN=<bench>/env/bin/semgrep`)                   |
+| `semgrep/kit/`              | Kit Semgrep rules that enforce shared rules, with `semgrep --test` fixtures in `tests/`          |
 | `templates/semgrep-pr.yml`  | Read-only, report-only GitHub Actions workflow that runs `semgrep-pr.sh` on pull requests         |
 | `docs/pr-review.md`         | Design, scope and progress of the PR-review setup                                                 |
 
@@ -85,6 +86,44 @@ fresh clones and hosted code review.
 
    Keep any full-scan Semgrep gate the app has. Apps without a Semgrep CI job
    can copy `templates/semgrep-pr.yml` to `.github/workflows/`.
+
+8. Vendor the kit's own Semgrep rules beside Frappe's:
+
+   ```text
+   vendor  dee-pat/frappe-agent-kit  semgrep/kit  <sha>  semgrep/kit
+   ```
+
+   `transactions.yml` bans `frappe.db.commit()` and `rollback()`, enforcing
+   the shared rule. `finance.yml` bans `Decimal` built from a float literal;
+   it is optional, for apps handling money or quantities; an app that does not
+   want it leaves it out of `--config`. Run them as a blocking scan that
+   excludes the vendored rules and their test fixtures:
+
+   ```bash
+   semgrep scan --error --metrics=off --severity ERROR \
+     --config semgrep/kit/transactions.yml --config semgrep/kit/finance.yml \
+     --exclude semgrep
+   ```
+
+## Lint
+
+Apps should cap complexity and keep unused imports out with ruff, matching the
+shared rule on complexity:
+
+```toml
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF", "C90"]  # with the app's own
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"<app>/hooks.py" = ["F401"]
+```
+
+Keep F401 enabled everywhere else. A deliberate re-export elsewhere carries
+`# noqa: F401 -- <reason>`.
 
 ## Review a PR
 

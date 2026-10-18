@@ -42,6 +42,9 @@ jobs:
             echo "::endgroup::"
           done
 
+      - name: Test kit Semgrep rules
+        run: semgrep --test --metrics=off --disable-version-check --config semgrep/kit semgrep/kit/tests
+
       - name: Parse templates
         run: |
           python3 - <<'EOF'

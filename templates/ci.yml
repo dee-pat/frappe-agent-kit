@@ -1,0 +1,214 @@
+# Copy to .github/workflows/ci.yml, replace myapp, and adjust the test steps.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pull requests cancel their superseded runs; pushes and manual runs never cancel.
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Exact Frappe tag so a green run is reproducible; bump it deliberately,
+  # together with nightly.yml and the hosting bench group.
+  FRAPPE_VERSION: v16.51.0
+  SITE: myapp-test.localhost
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py', '**/setup.cfg') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install mariadb-client
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench
+          BENCH_ROOT="$RUNNER_TEMP/frappe-bench"
+          echo "BENCH_ROOT=$BENCH_ROOT" >> "$GITHUB_ENV"
+          bench init --frappe-branch "$FRAPPE_VERSION" --skip-redis-config-generation --skip-assets --python "$(which python)" "$BENCH_ROOT"
+          test -f "$BENCH_ROOT/sites/common_site_config.json"
+
+      - name: Install app on a test site
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: |
+          bench get-app myapp "file://$GITHUB_WORKSPACE"
+          bench setup requirements --dev
+          bench new-site --db-root-password root --admin-password admin "$SITE"
+          bench --site "$SITE" set-config allow_tests true
+          bench --site "$SITE" install-app myapp
+          bench build
+        env:
+          CI: "Yes"
+
+      # App hook: seed fixtures the server tests need, for example
+      # bench --site "$SITE" execute myapp.tests.seed.seed_test_data
+
+      - name: Run server tests
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: bench --site "$SITE" run-tests --app myapp
+
+  ui:
+    name: UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install mariadb-client
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench
+          BENCH_ROOT="$RUNNER_TEMP/frappe-bench"
+          echo "BENCH_ROOT=$BENCH_ROOT" >> "$GITHUB_ENV"
+          bench init --frappe-branch "$FRAPPE_VERSION" --skip-redis-config-generation --skip-assets --python "$(which python)" "$BENCH_ROOT"
+          test -f "$BENCH_ROOT/sites/common_site_config.json"
+
+      - name: Install app on a test site and build assets
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: |
+          bench get-app myapp "file://$GITHUB_WORKSPACE"
+          bench setup requirements --dev
+          bench new-site --db-root-password root --admin-password admin "$SITE"
+          bench --site "$SITE" set-config allow_tests true
+          bench --site "$SITE" set-config host_name "http://$SITE:8000"
+          bench --site "$SITE" install-app myapp
+          bench build
+        env:
+          CI: "Yes"
+
+      # App hook: seed browser-test users and fixtures here, and set any site
+      # flag the web process reads at startup, before the server starts.
+
+      - name: Install Playwright browser
+        working-directory: ${{ env.BENCH_ROOT }}/apps/myapp
+        run: yarn playwright install --with-deps chromium
+
+      - name: Start web server
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: |
+          echo "127.0.0.1 $SITE" | sudo tee -a /etc/hosts
+          nohup bench --site "$SITE" serve --port 8000 --noreload > "$RUNNER_TEMP/bench-web.log" 2>&1 &
+          curl --noproxy '*' --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 2 "http://$SITE:8000/api/method/ping"
+
+      - name: Run Playwright
+        working-directory: ${{ env.BENCH_ROOT }}/apps/myapp
+        run: yarn playwright test
+        env:
+          BASE_URL: http://localhost:8000
+          FRAPPE_ADMIN_USER: Administrator
+          FRAPPE_ADMIN_PASSWORD: admin
+          CI: "Yes"
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-failure-artifacts
+          if-no-files-found: ignore
+          path: |
+            ${{ env.BENCH_ROOT }}/apps/myapp/playwright-report
+            ${{ env.BENCH_ROOT }}/apps/myapp/test-results
+            ${{ runner.temp }}/bench-web.log

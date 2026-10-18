@@ -31,14 +31,21 @@ jobs:
         run: pip install 'semgrep==1.172.0' 'PyYAML==6.0.3'
 
       - name: Run tool tests
-        # test_semgrep_pr.py skips without Semgrep, so require it here.
+        # test_semgrep_pr.py skips without Semgrep, so require it here. The
+        # copied-into-app checks run against the templates and this workflow.
         run: |
           set -euo pipefail
           export SEMGREP_BIN="$(command -v semgrep)"
           test "$("$SEMGREP_BIN" --version)" = 1.172.0
           for test_file in tools/test_*.py; do
+            case "$test_file" in
+              tools/test_deny_rules.py) args="templates/codex.rules templates/claude-settings.json" ;;
+              tools/test_workflow_concurrency.py) args="templates/ci.yml .github/workflows/ci.yml" ;;
+              *) args="" ;;
+            esac
             echo "::group::${test_file}"
-            python3 "$test_file" -v
+            # shellcheck disable=SC2086 # args holds space-free paths.
+            python3 "$test_file" -v $args
             echo "::endgroup::"
           done
 

@@ -8,20 +8,28 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
 
 ## Contents
 
-| Path                        | What it is                                                                                        |
-| --------------------------- | ------------------------------------------------------------------------------------------------- |
-| `rules/frappe.md`           | Always-on Frappe rules: the few that agents get wrong by default, kept short to load every turn   |
-| `skills/frappe-migration/`  | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes |
-| `skills/grilling/`          | Interview the user one decision at a time before high-impact work                                 |
-| `skills/pr-review-threads/` | Resolve GitHub review conversations only after verifying the fix at the current head              |
-| `skills/frappe-pr-review/`  | Evidence-based PR review: `frappe-code-review`, Semgrep and the installed framework, one report   |
-| `tools/sync-skills.sh`      | Vendor pinned skills, directories and the rules block into an app; check the copies match         |
-| `tools/test_sync_skills.py` | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
-| `tools/semgrep-pr.sh`       | Report only the Frappe Semgrep findings a commit range introduces, without touching the checkout  |
-| `tools/test_semgrep_pr.py`  | Tests for `semgrep-pr.sh`; need Semgrep (`SEMGREP_BIN=<bench>/env/bin/semgrep`)                   |
-| `semgrep/kit/`              | Kit Semgrep rules that enforce shared rules, with `semgrep --test` fixtures in `tests/`          |
-| `templates/semgrep-pr.yml`  | Read-only, report-only GitHub Actions workflow that runs `semgrep-pr.sh` on pull requests         |
-| `docs/pr-review.md`         | Design, scope and progress of the PR-review setup                                                 |
+| Path                                 | What it is                                                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `rules/frappe.md`                    | Always-on Frappe rules: the few that agents get wrong by default, kept short to load every turn   |
+| `skills/frappe-migration/`           | Expand/contract, renames, staged `unique`/`reqd`, patch retirement, and lifecycle fixture recipes |
+| `skills/grilling/`                   | Interview the user one decision at a time before high-impact work                                 |
+| `skills/pr-review-threads/`          | Resolve GitHub review conversations only after verifying the fix at the current head              |
+| `skills/frappe-pr-review/`           | Evidence-based PR review: `frappe-code-review`, Semgrep and the installed framework, one report   |
+| `skills/frappe-spa-client/`          | frappe-ui / Vue SPA calls to whitelisted methods: error mapping, CSRF, stale responses, Vitest    |
+| `tools/sync-skills.sh`               | Vendor pinned skills, directories and the rules block into an app; check the copies match         |
+| `tools/test_sync_skills.py`          | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
+| `tools/semgrep-pr.sh`                | Report only the Frappe Semgrep findings a commit range introduces, without touching the checkout  |
+| `tools/test_semgrep_pr.py`           | Tests for `semgrep-pr.sh`; need Semgrep (`SEMGREP_BIN=<bench>/env/bin/semgrep`)                   |
+| `semgrep/kit/`                       | Kit Semgrep rules that enforce shared rules, with `semgrep --test` fixtures in `tests/`           |
+| `templates/semgrep-pr.yml`           | Read-only, report-only GitHub Actions workflow that runs `semgrep-pr.sh` on pull requests         |
+| `templates/claude-settings.json`     | Claude Code deny rules for site config reads and destructive or disclosing `bench` commands       |
+| `templates/codex.rules`              | The matching Codex `prefix_rule` entries, each with `match` and `not_match` examples              |
+| `templates/ci.yml`                   | Server and UI CI jobs on a fresh bench and test site, with a pinned `FRAPPE_VERSION`              |
+| `templates/nightly.yml`              | Scheduled slow suites that report failures to one labelled issue and close it on recovery         |
+| `templates/verification.md`          | Definition of done, verification evidence and a required-gates table for an app's docs            |
+| `tools/test_deny_rules.py`           | Fails when a Codex deny prefix has no Claude Code deny rule; copied into apps                     |
+| `tools/test_workflow_concurrency.py` | Checks a workflow cancels only superseded PR runs; copied into apps                               |
+| `docs/pr-review.md`                  | Design, scope and progress of the PR-review setup                                                 |
 
 Nothing here is app-specific. App rules, domain conventions, site names and
 commands stay in each app's own `AGENTS.md`, and they win on conflict.
@@ -104,6 +112,32 @@ fresh clones and hosted code review.
      --config semgrep/kit/transactions.yml --config semgrep/kit/finance.yml \
      --exclude semgrep
    ```
+
+## Agent safety
+
+The deny-rule templates protect local development benches from an agent that
+reads site credentials or drops, restores or reconfigures a persistent site.
+Production safety belongs to the hosting (for example Frappe Cloud), not to
+these rules.
+
+1. Copy `templates/claude-settings.json` to `.claude/settings.json` and
+   `templates/codex.rules` to `.codex/rules/<app>.rules`, merging with any
+   rules the app already has.
+2. Replace `myapp` with the app's site prefix, so the rules name its
+   persistent `-dev` and `-test` sites. Add any app-specific credential file
+   to the `Read(...)` denies.
+3. Copy `tools/test_deny_rules.py` to `scripts/`. From the app root,
+   `python3 scripts/test_deny_rules.py` reads both files and fails when a
+   Codex prefix has no Claude rule.
+4. Run it in the app's lint gate, so the two files cannot drift.
+
+## CI and verification templates
+
+`templates/ci.yml`, `templates/nightly.yml` and `templates/verification.md`
+are copied once and then owned by the app; they are not vendored or checked by
+`sync-skills.sh`. Replace `myapp`, fill in the app's test and seed steps, and
+copy `tools/test_workflow_concurrency.py` to `scripts/` to keep the CI
+concurrency contract under test.
 
 ## Lint
 

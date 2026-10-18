@@ -1,0 +1,163 @@
+# Copy to .github/workflows/nightly.yml, replace myapp, and list the app's slow
+# suites in the matrix. Failures open or update one `nightly-failure` issue.
+name: Nightly suites
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force_failure:
+        description: Fail each job after its suite to exercise the failure report
+        type: boolean
+        default: false
+  # Optionally also exercise the harness when a PR changes it:
+  # pull_request:
+  #   paths:
+  #     - .github/workflows/nightly.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep in step with ci.yml.
+  FRAPPE_VERSION: v16.51.0
+  SITE: myapp-test.localhost
+
+jobs:
+  suite:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      issues: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per slow suite; the command runs from the bench directory.
+        include:
+          - name: Slow suite
+            command: bench --site myapp-test.localhost run-tests --app myapp --module myapp.tests.test_slow
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install mariadb-client
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench
+          BENCH_ROOT="$RUNNER_TEMP/frappe-bench"
+          echo "BENCH_ROOT=$BENCH_ROOT" >> "$GITHUB_ENV"
+          bench init --frappe-branch "$FRAPPE_VERSION" --skip-redis-config-generation --skip-assets --python "$(which python)" "$BENCH_ROOT"
+          test -f "$BENCH_ROOT/sites/common_site_config.json"
+
+      - name: Install app on a test site
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: |
+          bench get-app myapp "file://$GITHUB_WORKSPACE"
+          bench setup requirements --dev
+          bench new-site --db-root-password root --admin-password admin "$SITE"
+          bench --site "$SITE" set-config allow_tests true
+          bench --site "$SITE" install-app myapp
+        env:
+          CI: "Yes"
+
+      - name: Run ${{ matrix.name }}
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: ${{ matrix.command }}
+        env:
+          CI: "Yes"
+
+      # Manual runs only: prove the report step below without breaking a suite.
+      - name: Force failure
+        if: github.event_name == 'workflow_dispatch' && inputs.force_failure
+        run: |
+          echo "Forced failure to exercise the report step"
+          exit 1
+
+      # Report nightly and manual failures to one labelled issue; never on PRs.
+      - name: Report failure
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ENTRY: ${{ matrix.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create nightly-failure --force --color B60205 --description "Nightly suite failure"
+          body="$ENTRY failed: $RUN_URL (commit $GITHUB_SHA)"
+          issue=$(gh issue list --label nightly-failure --state open --json number --jq 'sort_by(.number) | .[0].number // empty')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+            exit 0
+          fi
+          gh issue create --title "Nightly suite failing" --label nightly-failure --body "$body"
+          # Several matrix entries may create an issue at once; keep the oldest and close the rest.
+          open=$(gh issue list --label nightly-failure --state open --json number --jq 'sort_by(.number) | .[].number')
+          for dup in $(echo "$open" | tail -n +2); do
+            gh issue close "$dup" --comment "Duplicate of #$(echo "$open" | head -n 1)."
+          done
+
+  # Close the failure issue once a whole scheduled run passes. A separate job
+  # waits for every matrix entry, so one entry's success cannot close an issue
+  # another entry is still reporting to.
+  recovered:
+    needs: suite
+    if: success() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Close recovered failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          for issue in $(gh issue list --label nightly-failure --state open --json number --jq '.[].number'); do
+            gh issue comment "$issue" --body "Recovered: $RUN_URL (commit $GITHUB_SHA)"
+            # Someone may close it in the meantime; already closed counts as success.
+            gh issue close "$issue" || [ "$(gh issue view "$issue" --json state --jq .state)" = CLOSED ]
+          done

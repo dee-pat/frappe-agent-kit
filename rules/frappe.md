@@ -37,6 +37,10 @@ pinned upstream skills, some of which read records with `get_all`/`get_list`.
   browser assertion in the same change; server tests own the full matrix.
 - Background jobs and patches are idempotent and safe to rerun.
 - For `>`, `>=`, `<`, `<=` rules, test greater, less and equal.
+- Never restore a production backup, or use real customer files or passwords, on
+  a local site; seed test data instead.
+- A new function over ruff complexity 15 (C901) needs a split or a
+  `# noqa: C901 -- <reason>` the reviewer accepts.
 - A gate passes only when run on the current change with an observed zero exit
   status. Report an unavailable gate as a blocker, and never weaken an assertion
   to make CI pass.

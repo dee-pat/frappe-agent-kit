@@ -36,3 +36,21 @@ Canonical files, discovery rule and sync coverage are implemented in
 [PR #12](https://github.com/dee-pat/frappe-agent-kit/pull/12). Pinned adoption
 is prepared; CI and review status live on the PR. Validate the next PR from
 each agent for adherence before adding enforcement.
+
+## Kit self-adoption
+
+The kit previously published the shared guidance without routing its own agents
+to it or supplying a default GitHub PR template. Its root `AGENTS.md` now routes
+PR preparation to the canonical process and default template; `CLAUDE.md`
+continues to reach the same instructions. Kit verification uses the kit's Tests
+section and the bundled review procedure and rubric.
+
+The default GitHub template copies the canonical source, with a drift check in
+the existing CI test glob. The source comment now refers to the process linked
+from `AGENTS.md`, which works in the kit and adopting apps. Acceptance requires
+both agents to reach the same process and the default template to match the
+shared source. No sync-tool, application or automatic-publication changes are
+needed. Restore the previous instructions and remove the default copy and
+check to undo this self-adoption. Implementation is in
+[PR #13](https://github.com/dee-pat/frappe-agent-kit/pull/13); verification and
+review evidence live on the PR.

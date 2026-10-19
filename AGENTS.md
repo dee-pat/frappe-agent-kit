@@ -17,6 +17,21 @@ rules and the tools that vendor them. `CLAUDE.md` is a symlink to this file.
 - Each tool's tests live beside it in `tools/test_*.py`. Change a tool and its
   tests together.
 
+## Pull requests
+
+Before preparing or updating a PR, read the
+[shared process](templates/pull-requests.md) and use the
+[default PR template](.github/pull_request_template.md). These repository
+instructions apply to both Codex and Claude Code through `CLAUDE.md`.
+Use the Tests section below for kit verification and the bundled
+[review procedure](skills/frappe-pr-review/SKILL.md) and
+[report rubric](skills/frappe-pr-review/references/report.md) for self-review;
+app runtime and framework checks apply when the change affects those areas.
+
+The default template is a byte-identical copy of
+`templates/pull_request_template.md`. Edit that shared source and refresh the
+default copy together; `tools/test_pr_template.py` detects drift in CI.
+
 ## Tests
 
 ```bash

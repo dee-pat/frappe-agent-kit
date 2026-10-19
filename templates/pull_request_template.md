@@ -1,7 +1,7 @@
 ## Summary
 
 <!-- Explain the problem and resulting behavior. Add a small before/after
-example or diagram only when useful. See docs/pull-requests.md. -->
+example or diagram only when useful. Read the shared process linked from AGENTS.md. -->
 
 ## Verification
 

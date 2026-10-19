@@ -144,6 +144,14 @@ Adoption is opt-in: install both files when bumping the kit pin. Existing apps
 without them keep their current PR format. The shared rule discovers the
 process when present; the existing review rubric remains authoritative.
 
+The kit uses this process itself: `AGENTS.md` (also reached through
+`CLAUDE.md`) points to the shared process and its default GitHub template at
+`.github/pull_request_template.md`. The default is a byte-identical copy of
+`templates/pull_request_template.md`; edit the shared source and refresh the
+copy together. `tools/test_pr_template.py`, included by the existing CI test
+glob, prevents the two from drifting. Kit verification comes from its own
+`AGENTS.md`, while apps keep their existing verification requirements.
+
 ## Agent safety
 
 The deny-rule templates protect local development benches from an agent that

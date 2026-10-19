@@ -114,6 +114,36 @@ fresh clones and hosted code review.
      --exclude semgrep
    ```
 
+## Shared PR process and template
+
+`templates/pull-requests.md` and `templates/pull_request_template.md` are
+canonical shared guidance, vendored without app-specific edits. The process
+owns preparation and the four-section body; apps own commands, required gates,
+domain rules and review overrides. Add both entries with the same full kit SHA
+as the other kit pins:
+
+```text
+rule  dee-pat/frappe-agent-kit  templates/pull-requests.md  <sha>  docs/pull-requests.md
+rule  dee-pat/frappe-agent-kit  templates/pull_request_template.md  <sha>  .github/pull_request_template.md
+```
+
+Create each target with the matching empty marker pair, for example:
+
+```text
+<!-- BEGIN synced-rules: dee-pat/frappe-agent-kit/templates/pull-requests.md@<sha> -->
+<!-- END synced-rules: dee-pat/frappe-agent-kit/templates/pull-requests.md -->
+```
+
+Use `templates/pull_request_template.md` in the template's marker pair.
+Then run `scripts/sync-skills.sh sync` and `check`. The existing `rule` mode
+manages Markdown between HTML markers; it also works for these whole-file
+copies without replacing neighboring GitHub workflows. Keep app overrides
+outside the generated blocks or in the app's own guidance.
+
+Adoption is opt-in: install both files when bumping the kit pin. Existing apps
+without them keep their current PR format. The shared rule discovers the
+process when present; the existing review rubric remains authoritative.
+
 ## Agent safety
 
 The deny-rule templates protect local development benches from an agent that

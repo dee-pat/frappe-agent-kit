@@ -122,6 +122,44 @@ class SyncSkillsTests(unittest.TestCase):
         result = self.run_sync("check")
         self.assertEqual(result.returncode, 0, result.stdout)
 
+    def test_whole_file_markdown_rules_preserve_neighboring_files_and_detect_drift(self):
+        targets = ("docs/pull-requests.md", ".github/pull_request_template.md")
+        workflow = self.app / ".github" / "workflows" / "ci.yml"
+        workflow.parent.mkdir(parents=True)
+        workflow.write_text("existing workflow\n")
+        entries = []
+        for index, target in enumerate(targets):
+            source = f"templates/pr{index}.md"
+            source_file = self.remote / source
+            source_file.parent.mkdir(exist_ok=True)
+            source_file.write_text(f"# Shared PR {index}\n")
+            target_file = self.app / target
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.write_text(
+                f"<!-- BEGIN synced-rules: acme/kit/{source}@unsynced -->\n"
+                f"<!-- END synced-rules: acme/kit/{source} -->\n"
+            )
+            entries.append((source, target))
+        git("add", "templates", cwd=self.remote)
+        git("commit", "-q", "-m", "shared PR guidance", cwd=self.remote)
+        revision = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.remote, text=True
+        ).strip()
+        with (self.app / "skills.lock").open("a") as lock:
+            for source, target in entries:
+                lock.write(f"rule acme/kit {source} {revision} {target}\n")
+
+        self.assertEqual(self.run_sync("sync").returncode, 0)
+        for index, target in enumerate(targets):
+            self.assertIn(f"# Shared PR {index}\n", (self.app / target).read_text())
+        self.assertEqual(workflow.read_text(), "existing workflow\n")
+        self.assertEqual(self.run_sync("check").returncode, 0)
+        template = self.app / targets[1]
+        template.write_text(template.read_text().replace("Shared PR", "Edited PR"))
+        self.assertEqual(self.run_sync("check").returncode, 1)
+        self.assertEqual(self.run_sync("sync").returncode, 0)
+        self.assertEqual(self.run_sync("check").returncode, 0)
+
     def test_check_fails_when_a_vendored_copy_is_edited(self):
         self.assertEqual(self.run_sync("sync").returncode, 0)
         (self.vendored_skill() / "SKILL.md").write_text("edited\n")

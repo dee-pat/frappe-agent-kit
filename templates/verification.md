@@ -26,9 +26,10 @@ evidence.
 
 ## Verification evidence
 
-Before committing or pushing, record local verification evidence. Before
-reporting completion, include final CI results for any required remote checks.
-Record:
+Before committing or pushing, record local verification evidence in the PR
+description (or the handoff message when there is no PR), never in specs,
+plans or progress notes. Before reporting completion, include final CI results
+for any required remote checks. Record:
 
 - Risk classification:
 - Required gates:

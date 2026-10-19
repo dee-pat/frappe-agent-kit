@@ -44,5 +44,8 @@ pinned upstream skills, some of which read records with `get_all`/`get_list`.
 - A gate passes only when run on the current change with an observed zero exit
   status. Report an unavailable gate as a blocker, and never weaken an assertion
   to make CI pass.
+- Specs, plans and progress notes state intent, invariants and current status,
+  and link the PR for finished work. Test results, gate output and other run
+  evidence go in the PR and CI, never in those docs.
 - Commits and pull requests carry no AI attribution: no `Co-Authored-By`
   trailer for an AI agent and no "Generated with ..." line.

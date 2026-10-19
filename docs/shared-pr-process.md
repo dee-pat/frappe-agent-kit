@@ -51,5 +51,6 @@ from `AGENTS.md`, which works in the kit and adopting apps. Acceptance requires
 both agents to reach the same process and the default template to match the
 shared source. No sync-tool, application or automatic-publication changes are
 needed. Restore the previous instructions and remove the default copy and
-check to undo this self-adoption. Implementation is prepared locally; link the
-PR here when published.
+check to undo this self-adoption. Implementation is in
+[PR #13](https://github.com/dee-pat/frappe-agent-kit/pull/13); verification and
+review evidence live on the PR.

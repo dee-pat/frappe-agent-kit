@@ -32,6 +32,7 @@ subject to user authorization.
 
 ## Progress
 
-Canonical files and discovery rule prepared for pinned adoption. Validate the
-next PR from each agent for adherence before adding enforcement. Execution
-evidence belongs in the PR or handoff; link the PR here when published.
+Canonical files, discovery rule and sync coverage are implemented in
+[PR #12](https://github.com/dee-pat/frappe-agent-kit/pull/12). Pinned adoption
+is prepared; CI and review status live on the PR. Validate the next PR from
+each agent for adherence before adding enforcement.

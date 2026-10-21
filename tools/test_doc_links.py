@@ -91,7 +91,9 @@ class DocLinkTests(unittest.TestCase):
         skills = read_by_task_skills(ROOT / "AGENTS.md")
         if not skills:
             self.skipTest("no Read by task table with skills in AGENTS.md")
-        missing = sorted(name for name in skills if not (ROOT / ".agents/skills" / name / "SKILL.md").is_file())
+        missing = sorted(
+            name for name in skills if not (ROOT / ".agents/skills" / name / "SKILL.md").is_file()
+        )
         self.assertEqual(missing, [])
 
 

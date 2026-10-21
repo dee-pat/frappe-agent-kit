@@ -40,6 +40,7 @@ SEMGREP_BIN=<bench>/env/bin/semgrep python3 tools/test_semgrep_pr.py
 semgrep --test --config semgrep/kit semgrep/kit/tests
 python3 tools/test_deny_rules.py templates/codex.rules templates/claude-settings.json
 python3 tools/test_workflow_concurrency.py templates/*.yml .github/workflows/*.yml
+python3 tools/test_doc_links.py
 ```
 
 `test_semgrep_pr.py` needs an absolute `SEMGREP_BIN` (or Semgrep on `PATH`) and
@@ -47,7 +48,8 @@ skips without Semgrep; a skip is not a pass. CI
 (`.github/workflows/ci.yml`) pins Semgrep 1.172.0 and runs every
 `tools/test_*.py`, the kit Semgrep rule tests and a parse of `templates/`.
 The deny-rule and concurrency tests are copied into apps and default to app
-paths, so the kit passes them the templates explicitly.
+paths, so the kit passes them the templates explicitly. The doc-link test is
+copied into apps too and checks the kit's own guidance here.
 
 ## Commits
 

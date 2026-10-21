@@ -30,6 +30,7 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
 | `templates/verification.md`          | Definition of done, verification evidence and a required-gates table for an app's docs            |
 | `tools/test_deny_rules.py`           | Fails when a Codex deny prefix has no Claude Code deny rule; copied into apps                     |
 | `tools/test_workflow_concurrency.py` | Checks a workflow cancels only superseded PR runs; copied into apps                               |
+| `tools/test_doc_links.py`            | Checks relative links, anchors and `Read by task` skills in an app's guidance; copied into apps   |
 | `docs/pr-review.md`                  | Design, scope and progress of the PR-review setup                                                 |
 
 Nothing here is app-specific. App rules, domain conventions, site names and
@@ -169,6 +170,30 @@ these rules.
    `python3 scripts/test_deny_rules.py` reads both files and fails when a
    Codex prefix has no Claude rule.
 4. Run it in the app's lint gate, so the two files cannot drift.
+
+## Read by task
+
+An `AGENTS.md` that links many docs leaves an agent guessing how much to read.
+Put a `## Read by task` table right after its intro, one row per kind of task:
+
+```text
+| Task                  | Read first                                  | Then, only if                              |
+| --------------------- | ------------------------------------------- | ------------------------------------------ |
+| Any code change       | [Definition of done](docs/verification.md#definition-of-done) | A data flow changes: [flows](docs/model.md#flows) |
+| Failing test or CI job | `frappe-debugging`                          | Service down: [recovery](docs/verification.md#recovery) |
+```
+
+- **Read first** holds what the task always needs; **Then, only if** holds the
+  conditional reading, with the condition in a few words.
+- Link the narrowest heading that answers the task, never a whole file. If the
+  heading does not exist, add one to the doc. Name a skill in backticks.
+- Delete a "read X before Y" bullet elsewhere once the table says the same,
+  and keep the rule it carried.
+
+Copy `tools/test_doc_links.py` to the app's `scripts/` and run it from the lint
+gate. It fails on a missing file or anchor in `AGENTS.md`, `*/AGENTS.md` and
+`docs/*.md`, and on a skill named in the table that is not under
+`.agents/skills/`. Without a table it skips that last check.
 
 ## CI and verification templates
 

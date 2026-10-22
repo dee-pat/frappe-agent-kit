@@ -1,0 +1,10 @@
+{
+  "app_name": "sample_app",
+  "title": "Sample App",
+  "description": "A private Frappe application",
+  "publisher": "Example Developer",
+  "email": "developer@example.com",
+  "license": "mit",
+  "github_owner": "your-github-login",
+  "bench_path": "/absolute/path/frappe-bench"
+}

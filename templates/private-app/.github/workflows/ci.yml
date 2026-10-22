@@ -1,0 +1,142 @@
+# Adapted from the pinned Frappe agent kit; maintained by __APP_TITLE__.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pull requests cancel their superseded runs; pushes and manual runs never cancel.
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Exact Frappe tag so a green run is reproducible; bump it deliberately,
+  # after checking compatibility with the hosting bench.
+  FRAPPE_VERSION: __FRAPPE_VERSION__
+  SITE: __TEST_SITE__
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "__PYTHON_VERSION__"
+      - name: Install lint tools
+        run: pip install pre-commit==__PRECOMMIT_VERSION__ semgrep==__SEMGREP_VERSION__
+      - name: Run lint
+        run: scripts/lint.sh
+
+  agent-kit:
+    name: Agent kit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "__PYTHON_VERSION__"
+      - name: Check agent kit
+        run: scripts/check-agent-kit.sh
+
+  server:
+    name: Server
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "__PYTHON_VERSION__"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: __NODE_VERSION__
+          check-latest: true
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py', '**/setup.cfg') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-client libmariadb-dev pkg-config
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench==__BENCH_VERSION__
+          npm install --global yarn@1.22.22
+          BENCH_ROOT="$RUNNER_TEMP/frappe-bench"
+          echo "BENCH_ROOT=$BENCH_ROOT" >> "$GITHUB_ENV"
+          bench init --frappe-branch "$FRAPPE_VERSION" --skip-redis-config-generation --skip-assets --python "$(which python)" "$BENCH_ROOT"
+          test -f "$BENCH_ROOT/sites/common_site_config.json"
+
+      - name: Install app on a test site
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: |
+          bench get-app __APP_NAME__ "file://$GITHUB_WORKSPACE"
+          bench setup requirements --dev
+          bench new-site --db-root-username root --db-root-password root --admin-password admin "$SITE"
+          bench --site "$SITE" set-config allow_tests true
+          bench --site "$SITE" install-app __APP_NAME__
+          bench build --app __APP_NAME__
+          bench --site "$SITE" migrate
+        env:
+          CI: "Yes"
+
+      - name: Run server tests
+        working-directory: ${{ env.BENCH_ROOT }}
+        run: bench --site "$SITE" run-tests --app __APP_NAME__
+
+      - name: Upload server failure logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: server-failure-logs
+          if-no-files-found: ignore
+          path: |
+            ${{ env.BENCH_ROOT }}/logs/*.log
+            ${{ env.BENCH_ROOT }}/sites/${{ env.SITE }}/logs/*.log

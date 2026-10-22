@@ -1,0 +1,78 @@
+exclude: '^(node_modules/|\.git/|\.agents/|\.claude/skills/|semgrep/|scripts/(sync-skills\.sh|semgrep-pr\.sh|test_deny_rules\.py|test_doc_links\.py|test_workflow_concurrency\.py)$)'
+default_stages: [pre-commit]
+fail_fast: false
+
+
+repos:
+  - repo: local
+    hooks:
+      - id: agent-kit
+        name: Check pinned agent kit
+        entry: scripts/check-agent-kit.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        files: "__APP_NAME__.*"
+        exclude: ".*json$|.*txt$|.*csv|.*md|.*svg"
+      - id: check-merge-conflict
+      - id: check-ast
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff
+        name: "Run ruff import sorter"
+        args: ["--select=I", "--fix"]
+
+      - id: ruff
+        name: "Run ruff linter"
+
+      - id: ruff-format
+        name: "Run ruff formatter"
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.7.1
+    hooks:
+      - id: prettier
+        types_or: [javascript, vue, scss]
+        # Ignore any files that might contain jinja / bundles
+        exclude: |
+            (?x)^(
+                __APP_NAME__/public/dist/.*|
+                .*node_modules.*|
+                .*boilerplate.*|
+                __APP_NAME__/templates/includes/.*|
+                __APP_NAME__/public/js/lib/.*
+            )$
+
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.44.0
+    hooks:
+      - id: eslint
+        types_or: [javascript]
+        args: ['--quiet']
+        # Ignore any files that might contain jinja / bundles
+        exclude: |
+            (?x)^(
+                __APP_NAME__/public/dist/.*|
+                cypress/.*|
+                .*node_modules.*|
+                .*boilerplate.*|
+                __APP_NAME__/templates/includes/.*|
+                __APP_NAME__/public/js/lib/.*
+            )$
+
+ci:
+    autoupdate_schedule: weekly
+    skip: []
+    submodules: false

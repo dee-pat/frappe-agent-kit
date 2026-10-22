@@ -1,0 +1,403 @@
+# Codex deny rules for local development benches. Copy to .codex/rules/<app>.rules,
+# keep every prefix in step with .claude/settings.json;
+# scripts/test_deny_rules.py fails when a prefix here has no Claude rule.
+
+prefix_rule(
+    pattern = ["bench", "show-config"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench show-config"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "mariadb"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench mariadb"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "postgres"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench postgres"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "db-console"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench db-console"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "drop-site"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ drop-site"],
+    not_match = ["bench --site example-scratch.localhost drop-site"],
+)
+
+prefix_rule(
+    pattern = ["bench", "drop-site", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench drop-site __DEV_SITE__"],
+    not_match = ["bench drop-site example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "reinstall"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ reinstall"],
+    not_match = ["bench --site example-scratch.localhost reinstall"],
+)
+
+prefix_rule(
+    pattern = ["bench", "reinstall", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench reinstall __DEV_SITE__"],
+    not_match = ["bench reinstall example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "restore"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ restore"],
+    not_match = ["bench --site example-scratch.localhost restore"],
+)
+
+prefix_rule(
+    pattern = ["bench", "restore", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench restore __DEV_SITE__"],
+    not_match = ["bench restore example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "partial-restore"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ partial-restore"],
+    not_match = ["bench --site example-scratch.localhost partial-restore"],
+)
+
+prefix_rule(
+    pattern = ["bench", "partial-restore", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench partial-restore __DEV_SITE__"],
+    not_match = ["bench partial-restore example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "trim-database"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ trim-database"],
+    not_match = ["bench --site example-scratch.localhost trim-database"],
+)
+
+prefix_rule(
+    pattern = ["bench", "trim-database", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench trim-database __DEV_SITE__"],
+    not_match = ["bench trim-database example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "trim-tables"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ trim-tables"],
+    not_match = ["bench --site example-scratch.localhost trim-tables"],
+)
+
+prefix_rule(
+    pattern = ["bench", "trim-tables", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench trim-tables __DEV_SITE__"],
+    not_match = ["bench trim-tables example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "uninstall-app"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ uninstall-app"],
+    not_match = ["bench --site example-scratch.localhost uninstall-app"],
+)
+
+prefix_rule(
+    pattern = ["bench", "uninstall-app", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench uninstall-app __DEV_SITE__"],
+    not_match = ["bench uninstall-app example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "remove-from-installed-apps"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ remove-from-installed-apps"],
+    not_match = ["bench --site example-scratch.localhost remove-from-installed-apps"],
+)
+
+prefix_rule(
+    pattern = ["bench", "remove-from-installed-apps", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench remove-from-installed-apps __DEV_SITE__"],
+    not_match = ["bench remove-from-installed-apps example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "new-site"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ new-site"],
+    not_match = ["bench --site example-scratch.localhost new-site"],
+)
+
+prefix_rule(
+    pattern = ["bench", "new-site", "__DEV_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench new-site __DEV_SITE__"],
+    not_match = ["bench new-site example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "show-config"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ show-config"],
+    not_match = ["bench --site __DEV_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "mariadb"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ mariadb"],
+    not_match = ["bench --site __DEV_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "postgres"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ postgres"],
+    not_match = ["bench --site __DEV_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "db-console"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ db-console"],
+    not_match = ["bench --site __DEV_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "drop-site"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ drop-site"],
+    not_match = ["bench --site example-scratch.localhost drop-site"],
+)
+
+prefix_rule(
+    pattern = ["bench", "drop-site", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench drop-site __TEST_SITE__"],
+    not_match = ["bench drop-site example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "reinstall"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ reinstall"],
+    not_match = ["bench --site example-scratch.localhost reinstall"],
+)
+
+prefix_rule(
+    pattern = ["bench", "reinstall", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench reinstall __TEST_SITE__"],
+    not_match = ["bench reinstall example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "restore"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ restore"],
+    not_match = ["bench --site example-scratch.localhost restore"],
+)
+
+prefix_rule(
+    pattern = ["bench", "restore", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench restore __TEST_SITE__"],
+    not_match = ["bench restore example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "partial-restore"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ partial-restore"],
+    not_match = ["bench --site example-scratch.localhost partial-restore"],
+)
+
+prefix_rule(
+    pattern = ["bench", "partial-restore", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench partial-restore __TEST_SITE__"],
+    not_match = ["bench partial-restore example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "trim-database"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ trim-database"],
+    not_match = ["bench --site example-scratch.localhost trim-database"],
+)
+
+prefix_rule(
+    pattern = ["bench", "trim-database", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench trim-database __TEST_SITE__"],
+    not_match = ["bench trim-database example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "trim-tables"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ trim-tables"],
+    not_match = ["bench --site example-scratch.localhost trim-tables"],
+)
+
+prefix_rule(
+    pattern = ["bench", "trim-tables", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench trim-tables __TEST_SITE__"],
+    not_match = ["bench trim-tables example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "uninstall-app"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ uninstall-app"],
+    not_match = ["bench --site example-scratch.localhost uninstall-app"],
+)
+
+prefix_rule(
+    pattern = ["bench", "uninstall-app", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench uninstall-app __TEST_SITE__"],
+    not_match = ["bench uninstall-app example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "remove-from-installed-apps"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ remove-from-installed-apps"],
+    not_match = ["bench --site example-scratch.localhost remove-from-installed-apps"],
+)
+
+prefix_rule(
+    pattern = ["bench", "remove-from-installed-apps", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench remove-from-installed-apps __TEST_SITE__"],
+    not_match = ["bench remove-from-installed-apps example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "new-site"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ new-site"],
+    not_match = ["bench --site example-scratch.localhost new-site"],
+)
+
+prefix_rule(
+    pattern = ["bench", "new-site", "__TEST_SITE__"],
+    decision = "forbidden",
+    justification = "Never destroy or overwrite the persistent local sites. See the agent rules in AGENTS.md.",
+    match = ["bench new-site __TEST_SITE__"],
+    not_match = ["bench new-site example-scratch.localhost"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "show-config"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ show-config"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "mariadb"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ mariadb"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "postgres"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ postgres"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__TEST_SITE__", "db-console"],
+    decision = "forbidden",
+    justification = "Do not disclose site configuration or open a database console. See the agent rules in AGENTS.md.",
+    match = ["bench --site __TEST_SITE__ db-console"],
+    not_match = ["bench --site __TEST_SITE__ migrate"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "set-config"],
+    decision = "forbidden",
+    justification = "Do not reconfigure the development site or reset its password. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ set-config"],
+    not_match = ["bench --site __TEST_SITE__ set-config"],
+)
+
+prefix_rule(
+    pattern = ["bench", "--site", "__DEV_SITE__", "set-admin-password"],
+    decision = "forbidden",
+    justification = "Do not reconfigure the development site or reset its password. See the agent rules in AGENTS.md.",
+    match = ["bench --site __DEV_SITE__ set-admin-password"],
+    not_match = ["bench --site __TEST_SITE__ set-admin-password"],
+)

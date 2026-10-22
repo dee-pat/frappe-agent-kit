@@ -17,6 +17,7 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
 | `skills/pr-review-threads/`          | Resolve GitHub review conversations only after verifying the fix at the current head              |
 | `skills/frappe-pr-review/`           | Evidence-based PR review: `frappe-code-review`, Semgrep and the installed framework, one report   |
 | `skills/frappe-spa-client/`          | frappe-ui / Vue SPA calls to whitelisted methods: error mapping, CSRF, stale responses, Vitest    |
+| `tools/bootstrap-private-app.py` | Bootstrap a private app with pinned CI and merge safeguards; supports dry-run and resume |
 | `tools/sync-skills.sh`               | Vendor pinned skills, directories and the rules block into an app; check the copies match         |
 | `tools/test_sync_skills.py`          | Regression tests for `sync-skills.sh`; run `python3 tools/test_sync_skills.py` after changing it  |
 | `tools/semgrep-pr.sh`                | Report only the Frappe Semgrep findings a commit range introduces, without touching the checkout  |
@@ -35,6 +36,14 @@ pin `frappe-app-dev`, `code-style` and `frappe-code-review` from there, and
 
 Nothing here is app-specific. App rules, domain conventions, site names and
 commands stay in each app's own `AGENTS.md`, and they win on conflict.
+
+## Bootstrap a new private app
+
+Use `python3 tools/bootstrap-private-app.py --config app.json --dry-run` to
+inspect a complete setup plan. The [bootstrap guide](docs/private-app-bootstrap.md)
+covers prerequisites, exact pins, private publication, CI, guarded merging and
+resuming interrupted phases. Start from the
+[non-secret configuration example](templates/private-app-config.json).
 
 ## Use in an app
 

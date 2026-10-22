@@ -39,7 +39,9 @@ API errors and unsuccessful CI stop the run. Secrets are redacted from errors.
 
 ## Acceptance and progress
 
-Implementation is complete locally; publication is pending. Acceptance requires command/state tests for
+Implementation is complete; publication and review are tracked in
+[PR #16](https://github.com/dee-pat/frappe-agent-kit/pull/16).
+Acceptance requires command/state tests for
 dry-run isolation, pin validation, conflicts, partial failures, resume, secret
 redaction and private-only publication. Generated projects must include the
 three CI jobs and tested merge safeguards, with no reference-project names.

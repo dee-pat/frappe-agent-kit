@@ -81,7 +81,9 @@ defects each round.
 
 - Scope the round to the diff from the last reviewed head to the new head, and
   the code that diff now reaches. Review the whole range again only when the
-  change was reworked or rebased onto a different base.
+  change was reworked or moved to a different base branch. After a rebase, the
+  diff between the two heads includes the base's own changes; compare with
+  `git range-diff <old base>..<old head> <new base>..<new head>` instead.
 - Do not report a finding from an earlier round again, open or resolved,
   unless the new commits reintroduce or change it; cite the earlier one. A
   finding still open at the new head stays in the report by reference and

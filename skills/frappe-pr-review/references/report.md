@@ -7,7 +7,8 @@ a fix prompt); include them where it says.
 ## Header
 
 - **Reviewed:** `<base sha>..<head sha>` (PR link or branch), and the installed
-  Frappe version used as reference.
+  Frappe version used as reference. For a re-review, also the round number and
+  the previously reviewed head.
 - **Merge readiness:** `Merge readiness: N/5`, or `N/5 (provisional)`, with a
   one-line rationale; see _Merge readiness_ below.
 - **Verdict:** changes requested when a blocking finding remains (see _When a
@@ -56,6 +57,9 @@ its own finding ID, for example `### F1 [P1] ...`.
   inline comment. Use a file-level or PR-level note only when no line fits.
 - **Status:** _confirmed_ (traced or reproduced) or _needs verification_ (state
   what would confirm it). Only confirmed findings set the verdict.
+- **Pre-existing:** a defect in code the change neither adds, modifies nor
+  newly reaches is not a finding of the change. List it under _Pre-existing_
+  below, not here.
 - One root cause per finding; mention other affected sites inside it.
 - Suggest a regression test when a test could have caught it.
 
@@ -74,8 +78,8 @@ average findings or score by their count.
 | 4/5   | No findings, but required verification is missing, stale or blocked, or a named concern remains. |
 | 5/5   | No findings, required verification passed for the reviewed revision, and no concern remains.     |
 
-- Only _confirmed_ findings set the score; a _needs verification_ item never
-  lowers it.
+- Only _confirmed_ findings set the score; a _needs verification_ or
+  _pre-existing_ item never lowers it.
 - Mark the score **provisional** when required verification is missing, stale
   (run on another revision) or blocked; a provisional score is at most 4/5.
 - A failed required check caps the score at 3/5 even with no finding; report
@@ -98,8 +102,16 @@ average findings or score by their count.
 - Only the user can waive a P2 finding, explicitly and for that finding; an
   agent or reviewer never does. Record the waiver and reason in the thread. A
   waived finding still sets the score. P0 and P1 findings cannot be waived.
-- After the final planned review, a new finding reopens work only when it meets
-  this blocking bar; otherwise reply, resolve or record a follow-up.
+- A pre-existing defect never blocks merge, whatever its priority.
+- After the final planned review (at most the third round; see the skill's
+  _Re-review_), a new finding reopens work only when it meets this blocking
+  bar; otherwise reply, resolve or record a follow-up.
+
+## Pre-existing
+
+One line per pre-existing defect worth a follow-up: priority, location, and
+the evidence that the change does not reach it. Omit the section when there
+are none.
 
 ## Semgrep
 

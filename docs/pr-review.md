@@ -77,6 +77,10 @@ PR-scoped view used by reviewers.
   merge-readiness score and the blocking rule, generalized from
   `bond_management`'s review contract; the kit gained CI and its own Semgrep
   rules in `semgrep/kit/`.
+- 2026-10-27: on `feat/review-convergence`, the skill gained _Re-review_
+  (later rounds review only the new diff, do not repeat earlier findings, name
+  the defect class, stop after the third round) and `report.md` gained a
+  non-blocking _Pre-existing_ section for defects the change does not reach.
 
 ## Follow-ups
 

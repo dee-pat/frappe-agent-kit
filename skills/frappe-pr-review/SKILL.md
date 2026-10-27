@@ -74,6 +74,25 @@ The app's `AGENTS.md` and review docs win on conflict and may extend the report
     unverified that you cannot state a failure scenario for, and list it under
     _Needs verification_ only if the risk justifies a human look.
 
+## Re-review
+
+A change that has been reviewed before must converge, not yield a few more old
+defects each round.
+
+- Scope the round to the diff from the last reviewed head to the new head, and
+  the code that diff now reaches. Review the whole range again only when the
+  change was reworked or moved to a different base branch. After a rebase, the
+  diff between the two heads includes the base's own changes; compare with
+  `git range-diff <old base>..<old head> <new base>..<new head>` instead.
+- Do not report a finding from an earlier round again, open or resolved,
+  unless the new commits reintroduce or change it; cite the earlier one. A
+  finding still open at the new head stays in the report by reference and
+  still sets the score.
+- Name the class of defect and every affected site in the change, so the
+  author fixes all of them in one round rather than one line per round.
+- After the third round on the same change, do not start another: recommend
+  rethinking the approach in the report, unless the user asks for one more.
+
 ## Semgrep and the AI review
 
 Semgrep owns reproducible pattern checks. The review owns cross-file behaviour,

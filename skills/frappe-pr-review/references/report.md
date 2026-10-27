@@ -58,8 +58,8 @@ its own finding ID, for example `### F1 [P1] ...`.
 - **Status:** _confirmed_ (traced or reproduced) or _needs verification_ (state
   what would confirm it). Only confirmed findings set the verdict.
 - **Pre-existing:** a defect in code the change neither adds, modifies nor
-  newly reaches is not a finding of the change. List it under _Pre-existing_
-  below, not here.
+  newly reaches, and that its goal or acceptance criteria do not cover, is not
+  a finding of the change. List it under _Pre-existing_ below, not here.
 - One root cause per finding; mention other affected sites inside it.
 - Suggest a regression test when a test could have caught it.
 

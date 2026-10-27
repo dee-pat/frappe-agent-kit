@@ -83,7 +83,9 @@ defects each round.
   the code that diff now reaches. Review the whole range again only when the
   change was reworked or rebased onto a different base.
 - Do not report a finding from an earlier round again, open or resolved,
-  unless the new commits reintroduce or change it; cite the earlier one.
+  unless the new commits reintroduce or change it; cite the earlier one. A
+  finding still open at the new head stays in the report by reference and
+  still sets the score.
 - Name the class of defect and every affected site in the change, so the
   author fixes all of them in one round rather than one line per round.
 - After the third round on the same change, do not start another: recommend
